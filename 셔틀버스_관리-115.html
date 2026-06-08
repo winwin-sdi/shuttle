@@ -1,0 +1,2828 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=3.0,user-scalable=yes">
+<title>셔틀버스 명단 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#EEF2F8;--sf:#fff;--sf2:#F5F8FF;--bd:#dce6f5;--tx:#111827;--dm:#4B5E7A;--fa:#8FA3C4;--bl:#1428A0;--bda:rgba(37,99,235,.09);--bba:rgba(37,99,235,.25);--gn:#059669;--gda:rgba(5,150,105,.09);--gba:rgba(5,150,105,.25);--rd:#DC2626;--rda:rgba(220,38,38,.09);--rba:rgba(220,38,38,.25);--og:#D97706;--oga:rgba(217,119,6,.09);--pu:#7C3AED;--pda:rgba(124,58,237,.09);--pba:rgba(124,58,237,.25);--sh:0 1px 6px rgba(37,99,235,.08);--shl:0 8px 28px rgba(37,99,235,.15)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;font-size:14px}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;width:100%;overflow:hidden}
+#topbar{height:52px;flex-shrink:0;background:#fff;border-bottom:2.5px solid var(--bl);display:flex;align-items:center;gap:8px;padding:0 12px;overflow:hidden;z-index:100}
+.logo{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#0d1f7c,#1428A0);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.logo-text{display:flex;flex-direction:column;min-width:0}
+.logo-main{font-size:13px;font-weight:800;color:var(--bl);white-space:nowrap}
+.logo-sub{font-size:8px;color:var(--fa);white-space:nowrap;letter-spacing:.8px}
+.topbar-right{margin-left:auto;display:flex;gap:5px;align-items:center;flex-shrink:0}
+.save-indicator{font-size:11px;color:var(--fa);display:flex;align-items:center;gap:4px;font-weight:700;white-space:nowrap}
+.save-dot{width:7px;height:7px;border-radius:50%}
+.save-dot.saved{background:var(--gn)}.save-dot.unsaved{background:var(--og)}
+#tabbar{height:46px;flex-shrink:0;background:#fff;border-bottom:1px solid var(--bd);display:flex;align-items:stretch;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;z-index:99}
+#tabbar::-webkit-scrollbar{display:none}
+.tab-btn{flex-shrink:0;border:none;background:none;font-family:inherit;font-size:12px;font-weight:600;color:var(--fa);white-space:nowrap;padding:0 13px;cursor:pointer;border-bottom:2.5px solid transparent;transition:color .15s,border-color .15s;display:flex;align-items:center;gap:4px;min-height:46px;-webkit-appearance:none}
+.tab-btn.on{color:var(--bl);border-bottom-color:var(--bl);font-weight:800}
+#content{flex:1;overflow:hidden;position:relative;background:var(--bg)}
+.tab-pane{display:none;position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:14px}
+.tab-pane.on{display:block}
+#tab-통계{padding:0}
+#tab-통계.on{display:flex}
+#sidebar-drawer{position:fixed;top:0;left:0;bottom:0;width:220px;background:#fff;border-right:1px solid var(--bd);z-index:500;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;gap:2px;padding:60px 8px 16px;overflow-y:auto;box-shadow:var(--shl)}
+#sidebar-drawer.open{transform:translateX(0)}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:499;opacity:0;transition:opacity .25s}
+#sidebar-overlay.open{opacity:1}
+.sidebar-section{font-size:10px;font-weight:700;color:var(--fa);padding:8px 10px 4px;letter-spacing:.1em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:9px;padding:10px;border-radius:10px;color:var(--dm);font-size:13px;font-weight:600;min-height:44px;position:relative;cursor:pointer;border:none;background:none;font-family:inherit;width:100%;text-align:left}
+.nav-item.active{background:var(--bda);color:var(--bl)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;background:var(--bl);border-radius:0 3px 3px 0}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.nav-count{margin-left:auto;font-size:11px;font-weight:700;background:var(--sf2);padding:2px 7px;border-radius:20px;color:var(--fa)}
+.nav-item.active .nav-count{background:var(--bda);color:var(--bl)}
+.stats-sidebar{width:130px;flex-shrink:0;background:#fff;border-right:1px solid var(--bd);padding:12px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.stats-content{flex:1;overflow:auto;padding:14px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;font-family:inherit;-webkit-appearance:none}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:linear-gradient(135deg,#0d1f7c,#1428A0);color:#fff;box-shadow:0 3px 10px rgba(20,40,160,.25)}
+.btn-secondary{background:var(--sf2);color:var(--dm);border:1.5px solid var(--bd)}
+.btn-danger{background:var(--rda);color:var(--rd);border:1.5px solid var(--rba)}
+.btn-sm{padding:6px 10px}
+@media(max-width:700px){.btn-text{display:none}}
+.chip{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--bd);background:#fff;color:var(--fa);transition:all .15s}
+.chip.active{background:var(--bda);color:var(--bl);border-color:var(--bba)}
+.chip-green.active{background:var(--gda);color:var(--gn);border-color:var(--gba)}
+.chip-red.active{background:var(--rda);color:var(--rd);border-color:var(--rba)}
+.chip-time.active{background:var(--pda);color:var(--pu);border-color:var(--pba)}
+.filter-chips{display:flex;gap:5px;flex-wrap:wrap}
+.dashboard{background:linear-gradient(135deg,#0a1563,#1428A0,#1a56db);border-radius:20px;padding:18px 16px 14px;margin-bottom:12px;position:relative;overflow:hidden;box-shadow:0 8px 28px rgba(10,21,99,.35)}
+.dashboard::before{content:'';position:absolute;right:-60px;top:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(255,255,255,.12),transparent 70%);pointer-events:none}
+.dashboard::after{content:'';position:absolute;left:-40px;bottom:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(59,130,246,.2),transparent 70%);pointer-events:none}
+.db-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;position:relative;z-index:1}
+.db-day-label{font-size:9px;color:rgba(255,255,255,.55);letter-spacing:2.5px;font-weight:700;text-transform:uppercase;margin-bottom:2px}
+.db-day-big{font-size:26px;font-weight:900;color:#fff;line-height:1;letter-spacing:-1px}
+.db-day-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:3px;font-weight:500}
+.db-time-box{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:8px 13px;text-align:center;backdrop-filter:blur(8px)}
+.db-time{font-size:22px;font-weight:900;color:#fff;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.db-time-label{font-size:8px;color:rgba(255,255,255,.55);letter-spacing:1.5px;margin-top:2px;text-transform:uppercase}
+.db-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;position:relative;z-index:1;margin-bottom:14px}
+.db-stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 7px;text-align:center;cursor:pointer;transition:background .2s;backdrop-filter:blur(4px)}
+.db-stat:active{background:rgba(255,255,255,.22)}
+.db-stat-val{font-size:20px;font-weight:900;color:#fff;line-height:1;letter-spacing:-1px}
+/* 체크완료 span도 동일 크기 */
+#db-checked{font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px}
+.db-stat-val span{font-size:11px;font-weight:600}
+.db-stat-label{font-size:9px;color:rgba(255,255,255,.6);margin-top:3px;letter-spacing:.3px}
+/* 대시보드 도넛 영역 */
+.db-donut-row{display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative;z-index:1;padding-bottom:2px;justify-content:space-between;width:100%}
+.db-donut-row::-webkit-scrollbar{display:none}
+.db-donut-cell{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;min-width:60px;padding:0 4px;cursor:pointer;transition:transform .2s}
+.db-donut-cell:active{transform:scale(.94)}
+.db-donut-sep{width:1px;background:rgba(255,255,255,.15);flex-shrink:0;align-self:stretch;margin:4px 0}
+.db-donut-canvas-wrap{position:relative;width:60px;height:60px}
+.db-donut-canvas-wrap canvas{width:60px;height:60px}
+.db-donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.db-donut-num{font-size:15px;font-weight:900;color:#fff;line-height:1;letter-spacing:-1px}
+.db-donut-bus{font-size:11px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.2px}
+.db-donut-sub{display:flex;gap:4px}
+.db-donut-sub span{font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px}
+.next-depart-card{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #fde68a;border-radius:13px;padding:11px 13px;margin-bottom:12px;display:flex;align-items:center;gap:11px}
+.ndc-icon{font-size:22px;flex-shrink:0}
+.ndc-label{font-size:10px;font-weight:700;color:var(--og);letter-spacing:.5px;margin-bottom:1px}
+.ndc-time{font-size:17px;font-weight:900;color:#92400e;letter-spacing:-1px}
+.ndc-sub{font-size:11px;color:var(--og)}
+.ndc-count{text-align:right;flex-shrink:0}
+.ndc-count-val{font-size:21px;font-weight:900;color:#92400e}
+.ndc-count-label{font-size:9px;color:var(--og);font-weight:700}
+.today-section-title{font-size:11px;font-weight:700;color:var(--fa);letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px}
+.today-bus-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.today-bus-card{background:#fff;border:1px solid var(--bd);border-radius:13px;padding:11px;cursor:pointer;box-shadow:var(--sh);transition:transform .15s}
+.today-bus-card:active{transform:scale(.97)}
+.tbc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.tbc-name{font-size:13px;font-weight:800;color:var(--tx);white-space:nowrap}
+.tbc-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+.tbc-bar-track{height:5px;background:var(--sf2);border-radius:3px;overflow:hidden;margin-bottom:4px}
+.tbc-bar-fill{height:100%;border-radius:3px;transition:width .5s}
+.tbc-nums{display:flex;justify-content:space-between;font-size:10px;color:var(--fa);font-weight:600}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:8px;margin-bottom:12px}
+.stat-card{background:#fff;border:1px solid var(--bd);border-radius:13px;padding:11px 12px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--bl),transparent)}
+.stat-n{font-size:22px;font-weight:900;line-height:1;letter-spacing:-1px}
+.stat-label{font-size:11px;color:var(--fa);margin-top:4px;font-weight:600}
+.toolbar{display:flex;gap:7px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.search-box{position:relative;flex:1;min-width:140px}
+.search-box input{width:100%;padding:9px 13px;border:1.5px solid var(--bd);border-radius:12px;background:#fff;color:var(--tx);font-size:13px;outline:none;transition:all .2s;font-family:inherit}
+.search-box input::placeholder{color:var(--fa)}
+.search-box input:focus{border-color:var(--bl);box-shadow:0 0 0 3px var(--bda)}
+.table-card{background:#fff;border:1px solid var(--bd);border-radius:13px;box-shadow:var(--sh);overflow:hidden}
+.table-header{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid var(--bd);background:var(--sf2)}
+.table-title{font-weight:800;font-size:14px}
+.count-badge{font-size:11px;color:var(--bl);background:var(--bda);padding:3px 9px;border-radius:20px;font-weight:700}
+table{width:100%;border-collapse:collapse}
+th{background:linear-gradient(180deg,#f0f4ff,#e8effc);font-size:10px;font-weight:700;color:var(--fa);padding:8px 10px;text-align:left;border-bottom:1px solid var(--bd);white-space:nowrap;letter-spacing:.07em;text-transform:uppercase}
+td{padding:9px 10px;border-bottom:1px solid var(--bd);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--sf2)}
+.bus-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.mode-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px}
+.mode-등원{background:var(--gda);color:var(--gn);border:1px solid var(--gba)}
+.mode-하원{background:var(--rda);color:var(--rd);border:1px solid var(--rba)}
+.time-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.t-950{background:var(--oga);color:var(--og)}.t-1450{background:var(--bda);color:var(--bl)}
+.t-1615,.t-1620{background:var(--pda);color:var(--pu)}.t-1745{background:var(--rda);color:var(--rd)}
+.t-none{background:var(--sf2);color:var(--fa)}
+.days-wrap{display:flex;gap:2px}
+.day-pip{width:21px;height:21px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.day-y{background:var(--bda);color:var(--bl);border:1px solid var(--bba)}.day-n{background:var(--sf2);color:var(--fa)}
+.location-cell{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dm)}
+.phone-wrap{display:flex;flex-direction:column;gap:3px}
+.phone-link{color:var(--bl);text-decoration:none;font-size:12px;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;font-weight:700;white-space:nowrap}
+.sms-btn{font-size:11px;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;color:var(--gn);cursor:pointer;font-weight:700}
+.actions{display:flex;gap:4px}
+.icon-btn{width:29px;height:29px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid var(--bd);background:#fff;font-size:13px}
+.icon-btn:hover.edit{background:var(--bda);border-color:var(--bba)}.icon-btn:hover.del{background:var(--rda);border-color:var(--rba)}
+.memo-badge{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;cursor:pointer;margin-left:4px}
+.memo-badge.has-memo{background:var(--oga);color:var(--og)}.memo-badge.no-memo{background:var(--sf2);color:var(--fa);border:1px dashed var(--bd)}
+.checklist-toolbar{display:flex;gap:7px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.day-sel-btn{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--bd);background:#fff;color:var(--fa);font-family:inherit;-webkit-appearance:none}
+.day-sel-btn.active{background:var(--bda);color:var(--bl);border-color:var(--bba)}
+.check-card{background:#fff;border:1px solid var(--bd);border-radius:13px;box-shadow:var(--sh);overflow:hidden;margin-bottom:10px}
+.check-card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-bottom:1px solid #bfdbfe}
+.check-card-title{font-weight:800;font-size:13px;color:#1428A0}
+.check-progress{font-size:12px;color:#1d4ed8;font-weight:700}
+.progress-bar-wrap{height:3px;background:#dbeafe}
+.progress-bar{height:3px;background:linear-gradient(90deg,var(--gn),#34d399);transition:width .4s}
+.check-row{display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid var(--bd);cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.05);touch-action:manipulation;user-select:none}
+.check-row:last-child{border-bottom:none}
+.check-row.checked{background:#f0fdf4}
+.check-row.checked .check-name{text-decoration:line-through;color:var(--fa)}
+.check-row.check-absent{background:#fffbeb}
+.check-box{width:22px;height:22px;border-radius:6px;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;font-size:12px;font-weight:800}
+.check-row.checked .check-box{background:var(--gn);border-color:var(--gn);color:#fff}
+.check-name{font-size:13px;font-weight:700;flex:1;color:var(--tx)}
+.absent-badge{font-size:10px;background:var(--oga);color:var(--og);padding:1px 6px;border-radius:10px;margin-left:4px;font-weight:700}
+.check-summary{display:flex;gap:7px;flex-wrap:wrap;padding:8px 13px;background:var(--sf2);border-top:1px solid var(--bd)}
+.summary-chip{padding:3px 9px;border-radius:12px;font-weight:700;font-size:12px}
+.s-total{background:var(--bda);color:var(--bl)}.s-done{background:var(--gda);color:var(--gn)}
+.s-remain{background:var(--rda);color:var(--rd)}.s-absent{background:var(--oga);color:var(--og)}
+.sms-section{background:#fff;border:1px solid var(--bd);border-radius:13px;padding:15px;margin-bottom:12px;box-shadow:var(--sh)}
+.sms-section-title{font-weight:800;font-size:14px;margin-bottom:11px;color:var(--tx)}
+.sms-number-box{background:var(--sf2);border:1.5px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--dm);line-height:1.9;word-break:break-all;max-height:110px;overflow-y:auto;margin-bottom:10px;min-height:44px;font-weight:600}
+.sms-template-item{display:flex;gap:9px;align-items:center;padding:9px 12px;background:var(--sf2);border-radius:10px;font-size:13px;border:1px solid var(--bd);margin-bottom:6px}
+.sms-template-text{flex:1;color:var(--tx);line-height:1.4;font-weight:500}
+.sms-copy-btn{font-size:11px;color:var(--bl);padding:3px 8px;border:1px solid var(--bba);border-radius:7px;background:var(--bda);cursor:pointer;font-weight:700;white-space:nowrap}
+.log-list{display:flex;flex-direction:column;gap:6px}
+.log-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:#fff;border:1px solid var(--bd);border-radius:10px;font-size:12px;box-shadow:var(--sh)}
+.log-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.log-add{background:var(--gn)}.log-edit{background:var(--bl)}.log-del{background:var(--rd)}.log-upload{background:var(--og)}
+.log-time{color:var(--fa);white-space:nowrap;font-size:11px;min-width:70px;font-weight:700}
+.log-text{flex:1;color:var(--dm);line-height:1.5}
+.log-empty{text-align:center;padding:40px;color:var(--fa)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;display:flex;align-items:center;justify-content:center;padding:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:#fff;border:1px solid var(--bd);border-radius:18px;width:100%;max-width:500px;box-shadow:var(--shl);transform:translateY(16px);transition:transform .2s;max-height:90vh;overflow-y:auto}
+.overlay.open .modal{transform:translateY(0)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:15px 17px 11px;border-bottom:1px solid var(--bd);position:sticky;top:0;background:#fff;z-index:1}
+.modal-title{font-size:15px;font-weight:800;color:var(--tx)}
+.modal-close{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fa);font-size:16px;background:none;border:none;font-family:inherit}
+.modal-body{padding:17px}
+.modal-footer{padding:11px 17px;border-top:1px solid var(--bd);display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:#fff}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+label{font-size:11px;font-weight:700;color:var(--fa);letter-spacing:.05em}
+input[type=text],input[type=number],select,textarea{padding:8px 11px;border:1.5px solid var(--bd);border-radius:10px;font-size:13px;color:var(--tx);background:#fff;outline:none;transition:all .2s;font-family:inherit;-webkit-appearance:none}
+input[type=text]:focus,input[type=number]:focus,select:focus,textarea:focus{border-color:var(--bl);box-shadow:0 0 0 3px var(--bda)}
+textarea{resize:vertical;min-height:55px}
+.day-checks{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.day-check{display:flex;align-items:center;gap:5px;cursor:pointer}
+.day-check input{width:15px;height:15px;accent-color:var(--bl)}
+.day-check span{font-size:13px;font-weight:600;color:var(--dm)}
+.confirm-modal{max-width:320px}
+.confirm-icon{width:44px;height:44px;border-radius:50%;background:var(--rda);display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 11px;border:1px solid var(--rba)}
+.confirm-text{text-align:center;color:var(--dm);font-size:14px;line-height:1.6}
+.memo-form{display:flex;flex-direction:column;gap:8px}
+.memo-date-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.memo-date-row input[type=date]{font-size:12px;padding:5px 9px;border:1.5px solid var(--bd);border-radius:9px;background:#fff;color:var(--tx);outline:none;-webkit-appearance:none}
+.memo-list{display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto}
+.memo-item{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:var(--sf2);border-radius:9px;font-size:12px;border:1px solid var(--bd)}
+.memo-item-date{color:var(--fa);white-space:nowrap;font-size:11px;font-weight:700}
+.memo-item-text{flex:1;color:var(--tx);line-height:1.4}
+.memo-item-del{color:var(--fa);cursor:pointer;font-size:14px}
+.drop-zone{border:2px dashed var(--bd);border-radius:13px;padding:26px 18px;text-align:center;cursor:pointer;transition:all .2s;background:var(--sf2)}
+.drop-zone.drag-over{border-color:var(--bl);background:var(--bda)}
+.upload-preview{margin-top:11px;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;display:none}
+.upload-stats{display:flex;gap:7px;flex-wrap:wrap}
+.upload-stat{font-size:12px;color:var(--dm);background:#fff;padding:3px 9px;border-radius:20px;font-weight:600;border:1px solid var(--bd)}
+.stats-chart-card{background:#fff;border:1px solid var(--bd);border-radius:13px;padding:15px;box-shadow:var(--sh)}
+.chart-title{font-size:13px;font-weight:800;margin-bottom:13px;color:var(--tx)}
+.bar-chart{display:flex;flex-direction:column;gap:7px}
+.bar-row{display:flex;align-items:center;gap:8px;font-size:12px;border-radius:8px;padding:3px 4px;cursor:pointer}
+.bar-row:active{background:var(--sf2)}
+.bar-label{width:48px;text-align:right;color:var(--fa);flex-shrink:0;font-size:11px;font-weight:600}
+.bar-track{flex:1;height:18px;background:var(--sf2);border-radius:5px;overflow:hidden;border:1px solid var(--bd)}
+.bar-fill{height:100%;border-radius:5px;transition:width .5s;display:flex;align-items:center;padding-left:6px;font-size:10px;color:#fff;font-weight:800;min-width:0}
+.bar-num{color:var(--dm);font-size:11px;min-width:28px;text-align:right;font-weight:700}
+.stat-panel{display:none}
+.toast-wrap{position:fixed;bottom:18px;right:12px;z-index:700;display:flex;flex-direction:column;gap:7px}
+.toast{background:rgba(20,40,160,.93);color:#fff;padding:10px 16px;border-radius:22px;font-size:13px;font-weight:700;box-shadow:var(--shl);display:flex;align-items:center;gap:8px;animation:tslide .22s ease;max-width:270px;white-space:nowrap}
+.toast.success{background:rgba(4,88,60,.92)}.toast.error{background:rgba(153,27,27,.92)}
+@keyframes tslide{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── 도넛 차트 ── */
+.donut-item{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:transform .15s;min-width:120px}
+.donut-item:active{transform:scale(.96)}
+.donut-canvas-wrap{position:relative;width:110px;height:110px;flex-shrink:0}
+.donut-canvas-wrap canvas{width:110px;height:110px}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.donut-total{font-size:22px;font-weight:900;color:var(--tx);line-height:1;letter-spacing:-1px}
+.donut-label{font-size:9px;font-weight:700;color:var(--fa);letter-spacing:.5px;margin-top:1px}
+.donut-name{font-size:12px;font-weight:800;color:var(--tx)}
+.donut-legend{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.donut-leg{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;cursor:pointer}
+.donut-leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+.empty{text-align:center;padding:48px 20px;color:var(--fa)}
+.empty-icon{font-size:32px;margin-bottom:8px;opacity:.7}
+@media(max-width:480px){.form-grid{grid-template-columns:1fr}.stats-sidebar{width:95px}.tab-btn{font-size:11px;padding:0 9px}}
+
+/* ════════════════════════════════
+   PC 레이아웃 (768px 이상)
+════════════════════════════════ */
+@media screen and (min-width:768px){
+  html,body{ background:#E8EDF5 }
+
+  /* 앱 전체 */
+  #app{
+    max-width:1320px; margin:0 auto;
+    box-shadow:0 0 60px rgba(20,40,160,.12);
+    border-radius:0;
+  }
+
+  /* 상단바 */
+  #topbar{ height:62px; padding:0 28px; gap:16px }
+  .logo-icon{ width:38px; height:38px; font-size:22px; border-radius:10px }
+  .logo-main{ font-size:16px }
+  .logo-sub{ font-size:9px }
+  .save-indicator{ font-size:12px }
+  .save-dot{ width:8px; height:8px }
+  .topbar-right{ gap:10px }
+  .btn{ font-size:13px; padding:8px 16px; border-radius:11px }
+  .btn-sm{ font-size:13px; padding:8px 14px }
+  .btn-text{ display:inline !important }
+  #menuBtn{ display:none !important }
+
+  /* 탭바 */
+  #tabbar{ height:54px }
+  .tab-btn{ font-size:14px; padding:0 24px; gap:7px }
+
+  /* content + sidebar 2단 배치 */
+  #content{ display:flex; flex-direction:row }
+  .tab-pane{
+    position:relative !important;
+    display:none; flex:1;
+    overflow-y:auto; height:100%;
+    padding:24px 28px;
+  }
+  .tab-pane.on{ display:block }
+  #tab-통계{ padding:0 }
+  #tab-통계.on{ display:flex }
+
+  /* 사이드바 항상 표시 */
+  #sidebar-drawer{
+    position:relative !important;
+    transform:none !important;
+    width:230px; min-width:230px;
+    flex-shrink:0;
+    box-shadow:none;
+    border-right:1px solid var(--bd);
+    padding:18px 12px 18px;
+    top:auto; left:auto; bottom:auto;
+    z-index:1;
+    height:100%;
+  }
+  #sidebar-drawer.open{ transform:none !important }
+  #sidebar-overlay{ display:none !important }
+  .nav-item{ font-size:14px; padding:11px 12px; min-height:46px }
+  .nav-count{ font-size:12px }
+  .sidebar-section{ font-size:11px; padding:10px 12px 5px }
+
+  /* 대시보드 */
+  .dashboard{ padding:26px 24px 20px; border-radius:24px; margin-bottom:18px }
+  .db-top{ margin-bottom:18px }
+  .db-day-label{ font-size:10px; letter-spacing:3px }
+  .db-day-big{ font-size:36px; letter-spacing:-2px }
+  .db-day-sub{ font-size:13px; margin-top:4px }
+  .db-time-box{ padding:12px 22px; border-radius:16px }
+  .db-time{ font-size:30px; letter-spacing:-2px }
+  .db-time-label{ font-size:9px; margin-top:3px; letter-spacing:2px }
+  .db-stats{ gap:12px; margin-bottom:20px }
+  .db-stat{ padding:14px 10px; border-radius:16px }
+  .db-stat-val{ font-size:28px; letter-spacing:-1.5px }
+  #db-checked{ font-size:28px; letter-spacing:-1.5px }
+  .db-stat-label{ font-size:11px; margin-top:5px; letter-spacing:.5px }
+
+  /* 도넛 차트 확대 */
+  .db-donut-row{ padding-bottom:6px; justify-content:space-between; width:100% }
+  .db-donut-cell{ flex:1; min-width:0; padding:0 6px; gap:8px }
+  .db-donut-canvas-wrap{ width:90px; height:90px }
+  .db-donut-canvas-wrap canvas{ width:90px !important; height:90px !important }
+  .db-donut-num{ font-size:22px; letter-spacing:-1px }
+  .db-donut-bus{ font-size:14px; font-weight:800 }
+  .db-donut-sub{ gap:6px }
+  .db-donut-sub span{ font-size:12px; padding:3px 9px; border-radius:10px }
+  .db-donut-sep{ margin:6px 0 }
+
+  /* 다음 출발 카드 */
+  .next-depart-card{ padding:16px 22px; border-radius:18px; margin-bottom:18px; gap:16px }
+  .ndc-icon{ font-size:32px }
+  .ndc-label{ font-size:11px; letter-spacing:1px }
+  .ndc-time{ font-size:26px; letter-spacing:-1px }
+  .ndc-sub{ font-size:13px }
+  .ndc-count-val{ font-size:32px; letter-spacing:-1px }
+  .ndc-count-label{ font-size:10px }
+
+  /* 호차 그리드 */
+  .today-section-title{ font-size:12px; margin-bottom:10px }
+  .today-bus-grid{ grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px }
+  .today-bus-card{ padding:14px; border-radius:16px }
+  .tbc-name{ font-size:14px }
+  .tbc-badge{ font-size:11px; padding:3px 9px }
+  .tbc-bar-track{ height:6px; margin-bottom:5px }
+  .tbc-nums{ font-size:11px }
+
+  /* 통계 카드 */
+  .stats-row{ grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-bottom:16px }
+  .stat-card{ padding:16px 18px; border-radius:18px }
+  .stat-n{ font-size:30px; letter-spacing:-1.5px }
+  .stat-label{ font-size:12px; margin-top:5px }
+
+  /* 검색/필터 */
+  .toolbar{ gap:10px; margin-bottom:16px }
+  .search-box input{ padding:10px 16px; font-size:14px; border-radius:14px }
+  .chip{ padding:8px 16px; font-size:13px; border-radius:24px }
+  .filter-chips{ gap:7px }
+
+  /* 테이블 */
+  .table-card{ border-radius:18px }
+  .table-header{ padding:16px 20px }
+  .table-title{ font-size:16px }
+  .count-badge{ font-size:12px; padding:4px 11px; border-radius:22px }
+  th{ padding:11px 14px; font-size:11px; letter-spacing:.08em }
+  td{ padding:12px 14px; font-size:14px }
+  .bus-badge,.mode-badge,.time-badge{ font-size:12px; padding:4px 11px }
+  .day-pip{ width:26px; height:26px; font-size:12px; border-radius:7px }
+  .phone-link{ font-size:13px; padding:5px 11px; border-radius:9px }
+  .sms-btn{ font-size:12px; padding:4px 9px; border-radius:9px }
+  .icon-btn{ width:34px; height:34px; font-size:15px; border-radius:9px }
+  .memo-badge{ font-size:11px; padding:3px 8px; border-radius:12px }
+
+  /* 체크리스트 */
+  .checklist-toolbar{ gap:10px; margin-bottom:14px }
+  .day-sel-btn{ padding:7px 15px; font-size:13px }
+  .check-card{ border-radius:18px }
+  .check-card-head{ padding:13px 18px }
+  .check-card-title{ font-size:14px }
+  .check-progress{ font-size:13px }
+  .check-row{ padding:13px 18px; gap:13px }
+  .check-name{ font-size:14px }
+  .check-box{ width:24px; height:24px; font-size:14px; border-radius:7px }
+  .check-summary{ padding:10px 18px; gap:9px }
+  .summary-chip{ font-size:13px; padding:4px 11px }
+
+  /* 문자 */
+  .sms-section{ padding:22px; border-radius:18px; margin-bottom:14px }
+  .sms-section-title{ font-size:16px; margin-bottom:14px }
+  .sms-number-box{ font-size:13px; padding:13px 15px }
+  .sms-template-item{ padding:11px 15px; font-size:14px; border-radius:12px }
+  .sms-copy-btn{ font-size:12px; padding:4px 10px; border-radius:8px }
+
+  /* 이력 */
+  .log-item{ padding:12px 16px; font-size:13px; border-radius:12px }
+  .log-dot{ width:8px; height:8px }
+  .log-time{ font-size:12px; min-width:90px }
+  .log-text{ line-height:1.6 }
+
+  /* 통계 사이드바 */
+  .stats-sidebar{ width:170px; padding:18px 12px }
+  .stats-content{ padding:24px }
+  .stats-chart-card{ border-radius:18px; padding:18px }
+  .chart-title{ font-size:14px; margin-bottom:16px }
+  .bar-row{ padding:4px 5px }
+  .bar-label{ font-size:12px; width:54px }
+  .bar-track{ height:22px; border-radius:6px }
+  .bar-num{ font-size:12px; min-width:36px }
+
+  /* 모달 */
+  .modal{ border-radius:22px }
+  .modal-head{ padding:20px 24px 15px }
+  .modal-title{ font-size:17px }
+  .modal-body{ padding:20px 24px }
+  .modal-footer{ padding:14px 24px }
+  .form-grid{ gap:15px }
+  label{ font-size:12px }
+  input[type=text],input[type=number],select,textarea{
+    padding:10px 13px; font-size:14px; border-radius:11px
+  }
+  .day-check span{ font-size:14px }
+
+  /* 토스트 */
+  .toast{ font-size:14px; padding:13px 22px; border-radius:28px; max-width:340px }
+}
+
+/* 1200px 이상 */
+@media screen and (min-width:1200px){
+  #app{ max-width:1480px }
+  .today-bus-grid{ grid-template-columns:repeat(6,1fr) }
+  .db-donut-cell{ flex:1; min-width:0 }
+  .db-donut-num{ font-size:26px }
+  .db-donut-bus{ font-size:16px }
+  .tab-btn{ font-size:15px; padding:0 28px }
+  #sidebar-drawer{ width:250px; min-width:250px }
+}
+
+
+/* ── 스플래시 화면 ── */
+#splash{
+  position:fixed;inset:0;background:linear-gradient(135deg,#0a1563,#1428A0,#1a56db);
+  z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;transition:opacity .5s ease, transform .5s ease;
+}
+#splash.hide{opacity:0;transform:scale(1.05);pointer-events:none}
+.splash-icon{
+  width:80px;height:80px;border-radius:22px;
+  background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;font-size:40px;
+  animation:splashPop .6s cubic-bezier(.34,1.56,.64,1) both;
+  box-shadow:0 12px 40px rgba(0,0,0,.3);
+}
+.splash-title{
+  font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px;
+  animation:splashFade .5s .2s ease both;
+}
+.splash-sub{
+  font-size:12px;color:rgba(255,255,255,.6);letter-spacing:2px;font-weight:600;
+  animation:splashFade .5s .35s ease both;
+}
+.splash-bar{
+  width:120px;height:3px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;
+  animation:splashFade .5s .4s ease both;
+}
+.splash-bar-fill{
+  height:100%;width:0%;background:linear-gradient(90deg,rgba(255,255,255,.5),#fff);
+  border-radius:3px;animation:splashLoad 1s .3s ease forwards;
+}
+@keyframes splashPop{from{opacity:0;transform:scale(.4) rotate(-10deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes splashFade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes splashLoad{from{width:0%}to{width:100%}}
+
+/* ── 호차 카드 플립 ── */
+.today-bus-card{transform-style:preserve-3d;perspective:800px}
+.today-bus-card.flip-wrap{
+  position:relative;transform-style:preserve-3d;
+  background:transparent!important;border:none!important;
+  box-shadow:none!important;padding:0!important;
+  cursor:pointer;
+}
+.card-front,.card-back{
+  position:absolute;inset:0;border-radius:13px;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  padding:12px;border:1px solid var(--bd);
+  display:flex;flex-direction:column;
+  transition:transform .55s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 1px 6px rgba(37,99,235,.08);
+}
+.card-front{background:#fff;transform:rotateY(0deg)}
+.card-back{
+  background:linear-gradient(135deg,#0d1f7c,#1428A0);
+  transform:rotateY(180deg);color:#fff;
+  align-items:center;justify-content:center;gap:8px;
+}
+.flip-wrap.flipped .card-front{transform:rotateY(-180deg)}
+.flip-wrap.flipped .card-back{transform:rotateY(0deg)}
+.card-back-title{font-size:15px;font-weight:900;letter-spacing:-.5px}
+.card-back-row{display:flex;gap:12px;align-items:center}
+.card-back-stat{text-align:center}
+.card-back-num{font-size:22px;font-weight:900;line-height:1;letter-spacing:-1px}
+.card-back-label{font-size:10px;color:rgba(255,255,255,.65);margin-top:2px;letter-spacing:.5px}
+.card-back-hint{font-size:10px;color:rgba(255,255,255,.45);margin-top:6px}
+
+/* ── 복사 토스트 ── */
+.copy-toast{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);
+  background:rgba(20,40,160,.92);color:#fff;
+  padding:12px 24px;border-radius:30px;font-size:14px;font-weight:700;
+  z-index:800;opacity:0;pointer-events:none;transition:all .2s;
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+  backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,.25);
+}
+.copy-toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+
+/* ── 홈 화면 등장 애니메이션 ── */
+.home-anim{opacity:0;transform:translateY(20px);transition:opacity .5s ease, transform .5s ease}
+.home-anim.visible{opacity:1;transform:translateY(0)}
+
+/* 각 요소별 딜레이 */
+.home-anim-0{transition-delay:.0s}
+.home-anim-1{transition-delay:.08s}
+.home-anim-2{transition-delay:.16s}
+.home-anim-3{transition-delay:.24s}
+.home-anim-4{transition-delay:.32s}
+.home-anim-5{transition-delay:.40s}
+
+/* 통계 카드 팝업 */
+.stat-card{opacity:0;transform:translateY(16px) scale(.95);transition:opacity .45s ease, transform .45s cubic-bezier(.34,1.2,.64,1)}
+.stat-card.visible{opacity:1;transform:translateY(0) scale(1)}
+.stat-card:nth-child(1){transition-delay:.0s}
+.stat-card:nth-child(2){transition-delay:.07s}
+.stat-card:nth-child(3){transition-delay:.14s}
+.stat-card:nth-child(4){transition-delay:.21s}
+.stat-card:nth-child(5){transition-delay:.28s}
+.stat-card:nth-child(6){transition-delay:.35s}
+.stat-card:nth-child(7){transition-delay:.42s}
+.stat-card:nth-child(8){transition-delay:.49s}
+.stat-card:nth-child(9){transition-delay:.56s}
+
+</style>
+</head>
+<body>
+<!-- 스플래시 -->
+<div id="splash">
+  <div class="splash-icon">🚌</div>
+  <div class="splash-title">셔틀버스 관리</div>
+  <div class="splash-sub">SHUTTLE BUS SYSTEM</div>
+  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+</div>
+<!-- 복사 토스트 -->
+<div class="copy-toast" id="copyToast">📋 복사됨</div>
+
+<div id="app">
+<div id="topbar">
+  <button class="btn btn-secondary btn-sm" id="menuBtn" style="padding:6px 9px;flex-shrink:0" onclick="toggleMenu()">☰</button>
+  <div class="logo">
+    <div class="logo-icon">🚌</div>
+    <div class="logo-text"><div class="logo-main">셔틀버스 관리</div><div class="logo-sub">SHUTTLE BUS SYSTEM</div></div>
+  </div>
+  <div class="topbar-right">
+    <div class="save-indicator"><div class="save-dot saved" id="saveDot"></div><span id="saveText">저장됨</span></div>
+    <span id="totalBadge" style="font-size:11px;color:var(--fa);white-space:nowrap"></span>
+    <button class="btn btn-secondary btn-sm" onclick="openUpload()" id="uploadBtn">📂<span class="btn-text"> 업로드</span></button>
+    <button class="btn btn-secondary btn-sm" onclick="downloadExcel()" id="xlsBtn">⬇<span class="btn-text"> 엑셀</span></button>
+    <button class="btn btn-primary btn-sm" onclick="openAdd()">＋<span class="btn-text"> 학생 추가</span></button>
+  </div>
+</div>
+<div id="tabbar">
+  <button type="button" class="tab-btn on" data-tab="명단">📋 탑승 명단</button>
+  <button type="button" class="tab-btn" data-tab="체크">✅ 당일 체크</button>
+  <button type="button" class="tab-btn" data-tab="문자">💬 문자 발송</button>
+  <button type="button" class="tab-btn" data-tab="통계">📊 통계</button>
+  <button type="button" class="tab-btn" data-tab="이력">📝 변경 이력</button>
+</div>
+<div id="content">
+  <div class="tab-pane on" id="tab-명단">
+    <div class="dashboard home-anim home-anim-0" id="dashboard">
+      <div class="db-top">
+        <div class="db-date">
+          <div class="db-day-label">TODAY</div>
+          <div class="db-day-big" id="db-day">-</div>
+          <div class="db-day-sub" id="db-date-str">-</div>
+        </div>
+        <div class="db-time-box">
+          <div class="db-time" id="db-clock">--:--</div>
+          <div class="db-time-label">CURRENT TIME</div>
+        </div>
+      </div>
+      <div class="db-stats">
+        <div class="db-stat"><div class="db-stat-val" id="db-total">-</div><div class="db-stat-label">전체 학생</div></div>
+        <div class="db-stat"><div class="db-stat-val" id="db-today-total">-</div><div class="db-stat-label">오늘 탑승</div></div>
+        <div class="db-stat"><div class="db-stat-val" id="db-checked">0/0</div><div class="db-stat-label">체크 완료</div></div>
+      </div>
+      <!-- 호차별 도넛 차트 행 -->
+      <div class="db-donut-row" id="dbDonutRow"></div>
+    </div>
+    <div class="next-depart-card home-anim home-anim-2" id="nextDepartCard" style="display:none">
+      <div class="ndc-icon">🚌</div>
+      <div style="flex:1;min-width:0"><div class="ndc-label">NEXT DEPARTURE</div><div class="ndc-time" id="ndc-time">--:--</div><div class="ndc-sub" id="ndc-sub">다음 출발</div></div>
+      <div class="ndc-count"><div class="ndc-count-val" id="ndc-count">-</div><div class="ndc-count-label">명 탑승 예정</div></div>
+    </div>
+    <div style="margin-bottom:12px" class="home-anim home-anim-3" id="todayBusSection"><div class="today-section-title">오늘 호차별 체크 현황</div><div class="today-bus-grid" id="todayBusGrid"></div></div>
+    <div class="stats-row" id="statsRow"></div>
+    <div class="toolbar home-anim home-anim-4">
+      <div class="search-box"><input type="text" id="searchInput" placeholder="이름, 장소, 전화번호 검색…" autocomplete="off" oninput="render()"></div>
+      <div class="filter-chips">
+        <span class="chip active" data-mode="all" onclick="setMode('all',this)">전체</span>
+        <span class="chip chip-green" data-mode="등원" onclick="setMode('등원',this)">등원</span>
+        <span class="chip chip-red" data-mode="하원" onclick="setMode('하원',this)">하원</span>
+      </div>
+      <div class="filter-chips">
+        <span class="chip chip-time" data-time="9:50" onclick="toggleTime('9:50',this)">9:50</span>
+        <span class="chip chip-time" data-time="14:50" onclick="toggleTime('14:50',this)">14:50</span>
+        <span class="chip chip-time" data-time="16:15" onclick="toggleTime('16:15',this)">16:15</span>
+        <span class="chip chip-time" data-time="16:20" onclick="toggleTime('16:20',this)">16:20</span>
+        <span class="chip chip-time" data-time="17:45" onclick="toggleTime('17:45',this)">17:45</span>
+      </div>
+      <div class="filter-chips">
+        <span class="chip" data-day="월" onclick="toggleDay('월',this)">월</span>
+        <span class="chip" data-day="화" onclick="toggleDay('화',this)">화</span>
+        <span class="chip" data-day="수" onclick="toggleDay('수',this)">수</span>
+        <span class="chip" data-day="목" onclick="toggleDay('목',this)">목</span>
+        <span class="chip" data-day="금" onclick="toggleDay('금',this)">금</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="clearFilterBtn" onclick="clearFilters()" style="display:none;color:var(--rd)">✕ 필터 초기화</button>
+    </div>
+    <div class="table-card home-anim home-anim-5">
+      <div class="table-header"><span class="table-title">탑승 명단</span><span class="count-badge" id="countBadge"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr>
+          <th>이름</th><th>호차</th><th>구분</th><th>시간</th><th>요일</th>
+          <th>탑승/하차 장소</th><th>전화번호</th><th>메모</th><th style="width:68px">관리</th>
+        </tr></thead><tbody id="tableBody"></tbody></table>
+      </div>
+      <div class="empty" id="emptyState" style="display:none"><div class="empty-icon">🔍</div><div>검색 결과가 없습니다</div></div>
+    </div>
+  </div>
+  <div class="tab-pane" id="tab-체크">
+    <div class="checklist-toolbar">
+      <div style="font-size:13px;font-weight:800">오늘의 탑승 체크</div>
+      <div class="filter-chips" id="daySelector"></div>
+      <select id="checkBusFilter" style="font-size:12px;padding:6px 9px;border:1.5px solid var(--bd);border-radius:9px;background:#fff;outline:none;font-family:inherit" onchange="buildChecklist()"><option value="all">전체 호차</option></select>
+      <select id="checkModeFilter" style="font-size:12px;padding:6px 9px;border:1.5px solid var(--bd);border-radius:9px;background:#fff;outline:none;font-family:inherit" onchange="buildChecklist()"><option value="all">등원+하원</option><option value="등원">등원만</option><option value="하원">하원만</option></select>
+      <button class="btn btn-secondary btn-sm" onclick="resetAllChecks()">✕ 초기화</button>
+      <button class="btn btn-secondary btn-sm" onclick="printChecklist()">🖨 인쇄</button>
+    </div>
+    <div id="checklistArea"></div>
+  </div>
+  <div class="tab-pane" id="tab-문자">
+    <div class="sms-section">
+      <div class="sms-section-title">📞 학부모 번호 추출</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+        <select id="smsBus" onchange="buildSmsNumbers()" style="font-size:13px;padding:7px 10px;border:1.5px solid var(--bd);border-radius:9px;background:#fff;outline:none;font-family:inherit"><option value="all">전체 호차</option></select>
+        <select id="smsMode" onchange="buildSmsNumbers()" style="font-size:13px;padding:7px 10px;border:1.5px solid var(--bd);border-radius:9px;background:#fff;outline:none;font-family:inherit"><option value="all">등원+하원</option><option value="등원">등원만</option><option value="하원">하원만</option></select>
+        <select id="smsTime" onchange="buildSmsNumbers()" style="font-size:13px;padding:7px 10px;border:1.5px solid var(--bd);border-radius:9px;background:#fff;outline:none;font-family:inherit"><option value="all">전체 시간</option><option>9:50</option><option>14:50</option><option>16:15</option><option>16:20</option><option>17:45</option></select>
+      </div>
+      <div style="font-size:12px;color:var(--fa);margin-bottom:6px;font-weight:600" id="smsCountLabel">필터를 선택하면 번호가 추출됩니다</div>
+      <div class="sms-number-box" id="smsNumberBox">—</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="copySmsNumbers()">📋 번호 복사</button>
+        <button class="btn btn-secondary btn-sm" onclick="openSmsApp()">💬 문자 앱 열기</button>
+      </div>
+    </div>
+    <div class="sms-section">
+      <div class="sms-section-title">📝 문자 템플릿</div>
+      <div id="smsTemplateList"></div>
+      <div style="margin-top:9px;display:flex;gap:6px">
+        <input type="text" id="newTemplateInput" placeholder="새 템플릿 내용 입력…" style="flex:1;font-size:12px">
+        <button class="btn btn-secondary btn-sm" onclick="addSmsTemplate()">추가</button>
+      </div>
+    </div>
+  </div>
+  <div class="tab-pane" id="tab-통계" style="padding:0">
+    <div class="stats-sidebar">
+      <div style="font-size:10px;font-weight:700;color:var(--fa);padding:4px 8px 6px;letter-spacing:.1em">차트 선택</div>
+      <button type="button" class="nav-item active" id="snav-bus" onclick="selectStatNav('bus',this)">🚌 호차별</button>
+      <button type="button" class="nav-item" id="snav-day" onclick="selectStatNav('day',this)">📅 요일별</button>
+      <button type="button" class="nav-item" id="snav-time" onclick="selectStatNav('time',this)">⏰ 시간대별</button>
+      <button type="button" class="nav-item" id="snav-mode" onclick="selectStatNav('mode',this)">🔵 등원/하원</button>
+      <button type="button" class="nav-item" id="snav-cap" onclick="selectStatNav('cap',this)">📊 정원현황</button>
+      <div style="margin-top:auto;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="openCapacity()">⚙ 정원 설정</button>
+        <button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="renderStats()">🔄 새로고침</button>
+      </div>
+    </div>
+    <div class="stats-content">
+      <div class="stats-chart-card" id="spanel-bus" style="display:block">
+  <div class="chart-title">🚌 호차별 탑승 인원</div>
+  <div id="busBarChart" style="display:none"></div>
+  <div id="donutWrap" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:center"></div>
+</div>
+      <div class="stats-chart-card" id="spanel-day" style="display:none"><div class="chart-title">📅 요일별 탑승 인원</div><div class="bar-chart" id="dayBarChart"></div></div>
+      <div class="stats-chart-card" id="spanel-time" style="display:none"><div class="chart-title">⏰ 시간대별 분포</div><div class="bar-chart" id="timeBarChart"></div></div>
+      <div class="stats-chart-card" id="spanel-mode" style="display:none"><div class="chart-title">🔵 등원 / 하원 비율</div><div id="modeChart"></div></div>
+      <div class="stats-chart-card" id="spanel-cap" style="display:none"><div class="chart-title">📊 정원 현황</div><div id="capacityChart"></div></div>
+    </div>
+  </div>
+  <div class="tab-pane" id="tab-이력">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:800">변경 이력 <span id="logCountBadge" class="count-badge"></span></div>
+      <button class="btn btn-secondary btn-sm" style="color:var(--rd)" onclick="clearLogs()">전체 삭제</button>
+    </div>
+    <div class="log-list" id="logList"></div>
+  </div>
+</div>
+</div>
+<div id="sidebar-overlay" onclick="closeMenu()"></div>
+<div id="sidebar-drawer">
+  <div class="sidebar-section">호차</div>
+  <div id="busNavList">
+    <button type="button" class="nav-item active" data-bus="all">
+      <div class="nav-dot" style="background:#6B7280"></div>전체<span class="nav-count" id="cnt-all">-</span>
+    </button>
+  </div>
+  <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--bd)">
+    <button class="btn btn-secondary btn-sm" style="width:100%;font-size:11px;color:var(--rd)" onclick="resetToInit()">🔄 원본 초기화</button>
+  </div>
+</div>
+<div id="printArea" style="display:none"></div>
+<div class="overlay" id="drillOverlay" onclick="closeIfBg(event,'drillOverlay')"><div class="modal" style="max-width:540px"><div class="modal-head"><span class="modal-title" id="drillTitle">상세 명단</span><button class="modal-close" onclick="closeModal('drillOverlay')">✕</button></div><div class="modal-body" style="padding:0"><div id="drillContent" style="overflow-y:auto;max-height:60vh"></div></div><div class="modal-footer"><span style="font-size:12px;color:var(--fa)" id="drillCount"></span><button class="btn btn-secondary" onclick="closeModal('drillOverlay')">닫기</button></div></div></div>
+<div class="overlay" id="memoOverlay" onclick="closeIfBg(event,'memoOverlay')"><div class="modal" style="max-width:440px"><div class="modal-head"><span class="modal-title" id="memoModalTitle">📌 메모/특이사항</span><button class="modal-close" onclick="closeModal('memoOverlay')">✕</button></div><div class="modal-body"><div class="memo-form"><div class="memo-date-row"><input type="date" id="memoDate"><input type="text" id="memoText" placeholder="결석, 하원 변경, 특이사항 등…" style="flex:1;font-size:13px"><button class="btn btn-primary btn-sm" onclick="addMemo()">추가</button></div><div class="memo-list" id="memoList"></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('memoOverlay')">닫기</button></div></div></div>
+<div class="overlay" id="capacityOverlay" onclick="closeIfBg(event,'capacityOverlay')"><div class="modal" style="max-width:400px"><div class="modal-head"><span class="modal-title">🚌 정원 설정</span><button class="modal-close" onclick="closeModal('capacityOverlay')">✕</button></div><div class="modal-body"><p style="font-size:12px;color:var(--fa);margin-bottom:12px">등원/하원 정원을 각각 설정하세요.</p><div style="display:grid;grid-template-columns:72px 1fr 1fr;gap:6px;margin-bottom:8px"><div></div><div style="font-size:11px;font-weight:700;color:var(--fa);text-align:center">🔵 등원</div><div style="font-size:11px;font-weight:700;color:var(--fa);text-align:center">🔴 하원</div></div><div id="capacityForm" style="display:flex;flex-direction:column;gap:8px"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('capacityOverlay')">닫기</button><button class="btn btn-primary" onclick="saveCapacity()">저장</button></div></div></div>
+<div class="overlay" id="uploadOverlay" onclick="closeIfBg(event,'uploadOverlay')"><div class="modal" style="max-width:480px"><div class="modal-head"><span class="modal-title">📂 엑셀 업로드</span><button class="modal-close" onclick="closeModal('uploadOverlay')">✕</button></div><div class="modal-body"><p style="font-size:13px;color:var(--dm);margin-bottom:13px;line-height:1.6">다운로드한 엑셀을 수정 후 업로드하면 명단에 반영됩니다.<br><span style="color:var(--rd);font-weight:700">⚠ 기존 데이터 전체가 대체됩니다.</span></p><div class="drop-zone" id="dropZone" onclick="document.getElementById('xlsFileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)"><div style="font-size:30px;margin-bottom:7px">📊</div><div style="font-size:13px;color:var(--dm);margin-bottom:3px;font-weight:600">클릭하거나 파일을 드래그</div><div style="font-size:12px;color:var(--fa)">.xlsx 파일만 지원</div></div><input type="file" id="xlsFileInput" accept=".xlsx" style="display:none" onchange="onFileSelect(this)"><div class="upload-preview" id="uploadPreview"><div style="font-weight:700;margin-bottom:6px" id="uploadFileName"></div><div class="upload-stats" id="uploadStats"></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('uploadOverlay')">취소</button><button class="btn btn-primary" id="applyUploadBtn" onclick="applyUpload()" disabled>반영하기</button></div></div></div>
+<div class="overlay" id="formOverlay" onclick="closeIfBg(event,'formOverlay')"><div class="modal"><div class="modal-head"><span class="modal-title" id="modalTitle">학생 추가</span><button class="modal-close" onclick="closeModal('formOverlay')">✕</button></div><div class="modal-body"><div class="form-grid"><div class="form-group"><label>이름 *</label><input type="text" id="f_name" placeholder="홍길동"></div><div class="form-group"><label>전화번호</label><input type="text" id="f_phone" placeholder="010-0000-0000"></div><div class="form-group"><label>호차 *</label><select id="f_bus"><option value="">선택</option></select></div><div class="form-group"><label>등원/하원 *</label><select id="f_mode"><option value="">선택</option><option>등원</option><option>하원</option></select></div><div class="form-group"><label>탑승 시간</label><select id="f_time" onchange="onTimeSelectChange(this)"><option value="">미정</option><option value="9:50">9:50</option><option value="14:50">14:50</option><option value="16:15">16:15</option><option value="16:20">16:20</option><option value="17:45">17:45</option><option value="__custom__">✏️ 직접 입력…</option></select><input type="text" id="f_time_custom" placeholder="예) 13:00" style="display:none;margin-top:6px" oninput="onTimeCustomInput(this)" maxlength="5"></div><div class="form-group full"><label>탑승 요일</label><div class="day-checks"><label class="day-check"><input type="checkbox" id="d_월"><span>월</span></label><label class="day-check"><input type="checkbox" id="d_화"><span>화</span></label><label class="day-check"><input type="checkbox" id="d_수"><span>수</span></label><label class="day-check"><input type="checkbox" id="d_목"><span>목</span></label><label class="day-check"><input type="checkbox" id="d_금"><span>금</span></label><button class="btn btn-secondary btn-sm" onclick="checkAllDays()">전체선택</button></div></div><div class="form-group full"><label>탑승/하차 장소</label><textarea id="f_loc" placeholder="예) 동백 롯데캐슬 101동 앞"></textarea></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('formOverlay')">취소</button><button class="btn btn-primary" id="saveBtn" onclick="saveStudent()">추가</button></div></div></div>
+<div class="overlay" id="confirmOverlay" onclick="closeIfBg(event,'confirmOverlay')"><div class="modal confirm-modal"><div class="modal-body" style="padding:24px 20px 18px"><div class="confirm-icon">🗑</div><div class="confirm-text"><span style="font-weight:800;color:var(--tx)" id="confirmName"></span> 학생을<br>삭제하시겠습니까?<br><span style="font-size:12px;color:var(--fa)">되돌릴 수 없습니다.</span></div></div><div class="modal-footer" style="justify-content:center"><button class="btn btn-secondary" onclick="closeModal('confirmOverlay')">취소</button><button class="btn btn-danger" onclick="confirmDelete()">삭제</button></div></div></div>
+<div class="toast-wrap" id="toastWrap"></div>
+<script>
+const INIT_DATA = {"1호차": {"등원": [{"name": "유나은", "phone": "010-2606-4297", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "진산로 124, 101동 롯데캐슬 하이브엘 /8:40이전 탑승 필수-바로ECC오기/", "time": "9:50"}, {"name": "최수인", "phone": "010-4101-0536", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "힐스테이트 구성 107-2404 (최아인동생)", "time": "9:50"}, {"name": "윤수호", "phone": "010-3642-9432", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "동백4로 26 성산마을 서해그랑블 3102동", "time": "9:50"}, {"name": "방서안", "phone": "010-3623-1083", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(보정동, 용인보정 꿈에그린아파트)", "time": "9:50"}, {"name": "김채윤", "phone": "010-8738-6786", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "마북로 210 이편한세상", "time": "14:50"}, {"name": "김지민", "phone": "010-9015-6073", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "호수마을상록롯데캐슬 1001동 1002호", "time": "14:50"}, {"name": "김도윤", "phone": "010-7232-6141", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "동백 롯데캐슬", "time": "14:50"}, {"name": "김라윤", "phone": "010-7232-6141", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "동백 롯데캐슬/화 개별", "time": "14:50"}, {"name": "임소율", "phone": "010-6828-3868", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "홈타운엄마학원앞버스정류장(소율폰010-8312-4872) / 정광상가수학학원 (수)", "time": "14:50"}, {"name": "권이준", "phone": "010-8010-8509", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "한라프로방스", "time": "14:50"}, {"name": "임태연", "phone": "010-6828-3868", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "교동홈타운앞엄마학원버스정류장 (태연폰-010-8302-4872)", "time": "16:20"}, {"name": "김서우", "phone": "010-4633-2641", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "현대모비스어린이집(3:55분전까지 준비->입구픽업) 늦으면 온누리반-302호출", "time": "16:20"}, {"name": "강경민", "phone": "010-3121-0124", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "현대모비스어린이집(3:55분전까지 준비->입구픽업) 늦으면 온누리반-302호출", "time": "16:20"}, {"name": "강승아", "phone": "010-8131-3571", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "현대모비스어린이집(3:55분전까지 준비->입구픽업) 늦으면 온누리반-302호출", "time": "16:20"}, {"name": "장하은", "phone": "010-4912-4324", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "꽃메마을4차 3단지(엄마폰 010-7239-3324/하은폰010-7263-3324)", "time": "16:20"}, {"name": "방주한", "phone": "010-8603-7503", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성산마을 남광하우스토리", "time": "16:20"}, {"name": "이태민", "phone": "010-9234-0836", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "힐스테이트 구성정문(할머니-010-5548-2556)", "time": "16:20"}, {"name": "최아인", "phone": "010-4101-0536", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "힐스테이트 구성정문", "time": "16:20"}], "하원": [{"name": "최수인", "phone": "010-4101-0536", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "힐스테이트 구성 107-2404 (최아인동생)", "time": "14:50"}, {"name": "윤수호", "phone": "010-3642-9432", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "동백4로 26 성산마을 서해그랑블 3102동", "time": "14:50"}, {"name": "김채윤I", "phone": "010-8738-6786", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "마북로 210 이편한세상", "time": "16:15"}, {"name": "김지민", "phone": "010-9015-6073", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "호수마을상록롯데캐슬 1001동 1002호", "time": "16:15"}, {"name": "김도윤", "phone": "010-7232-6141", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "동백 롯데캐슬", "time": "16:15"}, {"name": "김라윤", "phone": "010-7232-6141", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동백 롯데캐슬", "time": "16:15"}, {"name": "박다윤", "phone": "010-9975-2359", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "죽전동, 꽃메마을현대홈타운 436동 (4차3단지)", "time": "16:15"}, {"name": "임소율", "phone": "010-6828-3868", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "홈타운엄마학원앞버스정류장(소율폰010-8312-4872) / 정광상가수학학원 (수)", "time": "16:15"}, {"name": "박세혁", "phone": "010-9975-2359", "days": {"월": true, "화": true, "수": true, "목": true, "금": false}, "location": "4차 3단지", "time": "16:15"}, {"name": "임태연", "phone": "010-6828-3868", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "교동홈타운앞엄마학원버스정류장 (태연폰-010-8302-4872)", "time": "17:45"}, {"name": "김서우", "phone": "010-4633-2641", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "현대모비스어린이집(3:55분전까지 준비->입구픽업) 늦으면 온누리반-302호출", "time": "17:45"}, {"name": "강경민", "phone": "010-3121-0124", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "현대모비스어린이집(3:55분전까지 준비->입구픽업) 늦으면 온누리반-302호출", "time": "17:45"}, {"name": "주하람", "phone": "010-3336-0486", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "17:45"}, {"name": "방주한", "phone": "010-8603-7503", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성산마을 남광하우스토리", "time": "17:45"}, {"name": "이태민", "phone": "010-9234-0836", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "힐스테이트 구성정문(할머니-010-5548-2556)", "time": "17:45"}, {"name": "최아인", "phone": "010-4101-0536", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "힐스테이트 구성정문", "time": "17:45"}, {"name": "이제이", "phone": "010-2018-1262", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성시립", "time": "17:45"}, {"name": "문하준", "phone": "010-6546-5326", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원/ 꽃메 4차 4단지", "time": "17:45"}, {"name": "박세혁", "phone": "010-9975-2359", "days": {"월": true, "화": false, "수": false, "목": false, "금": false}, "location": "4차 3단지", "time": "17:45"}]}, "2호차": {"등원": [{"name": "김도은", "phone": "010-4814-0173", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "분당구 미금로 23 (구미동, 무지개마을)\t->3/17~부터 5호차", "time": "9:50"}, {"name": "서민규", "phone": "010-2122-7747", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "인현마을힐스테이트7차아파트) / 풍덕천동 이사예정 3/16부터", "time": "9:50"}, {"name": "이래희", "phone": "010-8951-3946", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "푸른솔로 66-26 (죽전동) 가든코트JJ", "time": "9:50"}, {"name": "신지안", "phone": "010-6231-0833", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "푸른솔로 66-12 (죽전동) 죽전 가든코트j j", "time": "9:50"}, {"name": "김마음", "phone": "010-9765-9905", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "효성해링턴 (아이뷰건너편)", "time": "14:50"}, {"name": "김채윤", "phone": "010-2474-5863", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "죽전초(읍천리카페)", "time": "14:50"}, {"name": "여채운", "phone": "010-9707-8801", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "현인마을 이편한세상", "time": "14:50"}, {"name": "김준우", "phone": "010-9151-2137", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "구미동 엘지아파트 (할머니) 1:50 / 대지로49 퍼스트하임 (본가)", "time": "14:50"}, {"name": "최예린", "phone": "010-5097-4042", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽전초 /하원 : 용인대 청룡태권도", "time": "14:50"}, {"name": "이가윤", "phone": "010-5037-0328", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동성 1차", "time": "14:50"}, {"name": "김서진", "phone": "010-4926-4863", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "강동우", "phone": "010-7333-5747", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "", "time": "14:50"}, {"name": "장시온", "phone": "010-2823-5675", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "GS편의점", "time": "14:50"}, {"name": "이지오", "phone": "010-4288-0219", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "", "time": "14:50"}, {"name": "주리엘", "phone": "010-6299-2088", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "대일초 화목 / 금 2:25", "time": "14:50"}, {"name": "지온유", "phone": "010-3319-8400", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "수지구 푸른솔로 55, 101-406", "time": "14:50"}, {"name": "이나율", "phone": "010-3703-0134", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "수: 대현초 / 월금: 집", "time": "16:20"}, {"name": "현소담", "phone": "010-4589-3195", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "한울유치원", "time": "16:20"}, {"name": "김소율", "phone": "010-5002-0500", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "자연유치원 / 개별하원 월 : 동대문엽떡앞 (큰대로변)", "time": "16:20"}, {"name": "강윤도", "phone": "010-7333-5747", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "벽산 4단지 CU", "time": "16:20"}, {"name": "장서현", "phone": "010-7404-2023", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "한울유치원 구미동 무지개마을", "time": "16:20"}, {"name": "안희윤", "phone": "010-3011-5047", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "한울유치원 구미동 무지개마을", "time": "16:20"}, {"name": "김민준", "phone": "010-9425-7212", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "한울유치원 / 대지마을2차 현대홈타운) 후문 셔틀타고 내리는곳", "time": "16:20"}, {"name": "배수아", "phone": "010-2383-5282", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "한울유치원 /(구미동, 무지개마을) 210동", "time": "16:20"}], "하원": [{"name": "이래희", "phone": "010-8951-3946", "days": {"월": true, "화": true, "수": true, "목": true, "금": false}, "location": "(16874) 경기도 용인시 수지구 푸른솔로 66-26 (죽전동) 가든코트JJ", "time": "14:50"}, {"name": "신지안", "phone": "010-6231-0833", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(16874) 경기도 용인시 수지구 푸른솔로 66-12 (죽전동) 죽전 가든코트j j", "time": "14:50"}, {"name": "김도은", "phone": "010-4814-0173", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "분당구 미금로 23 (구미동, 무지개마을)", "time": "14:50"}, {"name": "김유준", "phone": "010-4678-3280", "days": {"월": false, "화": false, "수": false, "목": false, "금": false}, "location": "현대 4차 3단지", "time": "16:15"}, {"name": "서유준", "phone": "010-6808-6818", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "현대 4차 2단지", "time": "16:15"}, {"name": "지온유", "phone": "010-3319-8400", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "수지구 푸른솔로 55, 101-406", "time": "16:15"}, {"name": "최시원", "phone": "010-9300-6122", "days": {"월": true, "화": true, "수": true, "목": true, "금": false}, "location": "타이곤 태권도", "time": "16:15"}, {"name": "이서유", "phone": "010-5037-0628", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "용인대 타이곤태권도", "time": "16:15"}, {"name": "양태양", "phone": "010-6365-3691", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "타이곤 태권도", "time": "16:15"}, {"name": "권이준", "phone": "010-8010-8509", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "타이곤 태권도", "time": "16:15"}, {"name": "이래희", "phone": "010-8951-3946", "days": {"월": true, "화": false, "수": false, "목": false, "금": false}, "location": "(16874) 경기도 용인시 수지구 푸른솔로 66-26 (죽전동) 가든코트JJ", "time": "16:15"}, {"name": "이지오", "phone": "010-4288-0219", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "도담마을 아이파크", "time": "16:15"}, {"name": "김준우", "phone": "010-9151-2137", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "구미동 엘지아파트 (할머니) / 대지로49 퍼스트하임 (본가)", "time": "16:15"}, {"name": "주리엘", "phone": "010-6299-2088", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "대일초 화목 / 금 2:25", "time": "16:15"}, {"name": "이가윤", "phone": "010-4604-4416", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동성1차", "time": "16:15"}, {"name": "김서진", "phone": "010-4926-4863", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "16:15"}, {"name": "서유하", "phone": "010-9593-7859", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "집(신촌초)", "time": "16:15"}, {"name": "정서진", "phone": "010-7170-8466", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "도담마을 푸르지오 601", "time": "16:15"}, {"name": "장시온", "phone": "010-2823-5675", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "도담마을7단지뜨리에체아파트)", "time": "16:15"}, {"name": "최예린", "phone": "010-5097-4042", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽전초 /하원 : 용인대 청룡태권도", "time": "16:15"}, {"name": "김채윤", "phone": "010-2474-5863", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "화,목: 현인마을3차상가(슈퍼키즈태권도) / 금: 죽전아이뷰", "time": "16:15"}, {"name": "서민규", "phone": "010-2122-7747", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "수지구 탄천상로 7 (죽전동, 인현마을힐스테이트7차아파트) / 풍덕천동 이사예정 3/16부터", "time": "16:15"}, {"name": "강동우", "phone": "010-7333-5747", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "용인대엘리트태권도/ 벽산 4단지CU(수요일만)", "time": "16:15"}, {"name": "김마음", "phone": "010-9765-9905", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "효성해링턴 (아이뷰건너편)", "time": "16:15"}, {"name": "여채운", "phone": "010-9707-8801", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "현인마을 이편한세상", "time": "16:15"}, {"name": "장하은", "phone": "010-4912-4324", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "뜨리에체 (엄마폰 010-7239-3324/하은폰010-7263-3324)", "time": "17:45"}, {"name": "이나율", "phone": "010-3703-0134", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "수: 대현초 / 월금: 집", "time": "17:45"}, {"name": "현소담", "phone": "010-4589-3195", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "한울유치원", "time": "17:45"}, {"name": "여채운", "phone": "010-9707-8801", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "현인마을 이편한세상", "time": "17:45"}, {"name": "장윤서", "phone": "010-5190-6850", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "도담 아이파크", "time": "17:45"}, {"name": "장예원", "phone": "010-4116-2837", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "17:45"}, {"name": "안희윤", "phone": "010-3011-5047", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "한울유치원 구미동 무지개마을", "time": "17:45"}, {"name": "김민준", "phone": "010-9425-7212", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "한울유치원 / 대지마을2차 현대홈타운) 후문 셔틀타고 내리는곳", "time": "17:45"}, {"name": "배수아", "phone": "010-2383-5282", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "한울유치원 /(구미동, 무지개마을) 210동", "time": "17:45"}, {"name": "윤정우", "phone": "010-7288-2558", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 하원: 4차 3단지", "time": "17:45"}]}, "3호차": {"등원": [{"name": "이시온", "phone": "010-2026-7390", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "연원마을삼성명가타운아파트) /9:00 선호, 적어도 9시 이전 탑승해야함", "time": "9:50"}, {"name": "한지수", "phone": "010-9970-9400", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "기흥구 보정로30 103-1101", "time": "9:50"}, {"name": "이하린", "phone": "010-3445-3342", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽전자이2차 101동 307호", "time": "14:50"}, {"name": "박재은", "phone": "010-8746-8620", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽현마을 아이파크", "time": "14:50"}, {"name": "정채희", "phone": "010-6661-5828", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽전자이2차 101동", "time": "14:50"}, {"name": "양다빈", "phone": "010-5733-3206", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "기흥구 신촌로 51번길 6-14, 3층", "time": "14:50"}, {"name": "이진우", "phone": "010-4335-1935", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "신갈동, 신흥덕롯데캐슬레이시티", "time": "14:50"}, {"name": "이시윤", "phone": "010-5877-6625", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "한화 꿈에그린", "time": "14:50"}, {"name": "정시우", "phone": "010-7190-8535", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "보정초 / 포스홈타운 1차 212동 1902호", "time": "14:50"}, {"name": "김도연", "phone": "010-3412-5797", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "lg자이 상가 앞", "time": "14:50"}, {"name": "최 혁", "phone": "010-2767-9612", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 118 (보정초 등원) / 2:35분 요청(돌봄 2:30분에 끝남)", "time": "14:50"}, {"name": "이서준", "phone": "010-2822-2715", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 127(보정초 등원)", "time": "14:50"}, {"name": "이서온", "phone": "010-5043-5770", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "한화 꿈에그린", "time": "14:50"}, {"name": "이수현", "phone": "010-7277-7524", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "보정초 후문", "time": "16:20"}, {"name": "이무강", "phone": "010-7149-0407", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성시립어린이집", "time": "16:20"}, {"name": "최지아", "phone": "010-9706-6543", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성시립어린이집", "time": "16:20"}, {"name": "홍세인", "phone": "010-2699-8169", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "포스홈1차 정문 cu앞", "time": "16:20"}, {"name": "김주아", "phone": "010-7394-5070", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "16:20"}, {"name": "이제이", "phone": "010-2018-1262", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성시립", "time": "16:20"}, {"name": "김유현", "phone": "010-9580-4871", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 더샵보정애비뉴 202동", "time": "16:20"}, {"name": "박채연", "phone": "010-4308-1931", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "보정초 후문", "time": "16:20"}, {"name": "배서은", "phone": "010-3778-9192", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "보정초 후문", "time": "16:20"}, {"name": "홍서윤", "phone": "010-5052-0645", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성시립", "time": "16:20"}, {"name": "임리아", "phone": "010-4922-1014", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성시립", "time": "16:20"}, {"name": "조용우", "phone": "010-2723-1182", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성시립어린이집 / 삼성명가", "time": "16:20"}], "하원": [{"name": "이시온", "phone": "010-2026-7390", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "연원마을삼성명가타운아파트) /9:00 선호, 적어도 9시 이전 탑승해야함", "time": "14:50"}, {"name": "조별", "phone": "010-5092-1125", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "동원로얄듀크 309동", "time": "14:50"}, {"name": "이하린", "phone": "010-3445-3342", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽전자이2차 101동 307호", "time": "16:15"}, {"name": "박재은", "phone": "010-8746-8620", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽현마을 아이파크", "time": "16:15"}, {"name": "정채희", "phone": "010-6661-5828", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽전자이2차 101동", "time": "16:15"}, {"name": "양다빈", "phone": "010-5733-3206", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "기흥구 신촌로 51번길 6-14, 3층", "time": "16:15"}, {"name": "이진우", "phone": "010-4335-1935", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "신갈동, 신흥덕롯데캐슬레이시티", "time": "16:15"}, {"name": "이시윤", "phone": "010-5877-6625", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "한화 꿈에그린", "time": "16:15"}, {"name": "정시우", "phone": "010-7190-8535", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "포스홈타운 1차 212동 1902호", "time": "16:15"}, {"name": "김우빈", "phone": "010-5477-1622", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "삼성명가타운 107-1504", "time": "16:15"}, {"name": "이소미", "phone": "010-9280-2350", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "삼성명가 110-1003", "time": "16:15"}, {"name": "김도연", "phone": "010-3412-5797", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "lg자이 상가 앞", "time": "16:15"}, {"name": "김지유", "phone": "010-9802-1268", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "아이파크", "time": "16:15"}, {"name": "이서준", "phone": "010-2822-2715", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 127(보정초 등원)", "time": "16:15"}, {"name": "이시온", "phone": "010-2026-7390", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "연원마을삼성명가타운아파트) /9:00 선호, 적어도 9시 이전 탑승해야함", "time": "16:15"}, {"name": "정한솔", "phone": "010-4417-2407", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "연원로 49 (보정동, 상떼빌 구성역 플랫폼시티)", "time": "16:15"}, {"name": "이무강", "phone": "010-7149-0407", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성시립어린이집", "time": "17:45"}, {"name": "홍세인", "phone": "010-2699-8169", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "포스홈1차 정문 cu앞", "time": "17:45"}, {"name": "김주아", "phone": "010-7394-5070", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "초등학교 등원/죽현로80번길 46-5", "time": "17:45"}, {"name": "홍예서", "phone": "010-3315-3602", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원) 하원 죽현마을 아이파크", "time": "17:45"}, {"name": "박채연", "phone": "010-4308-1931", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "보정초 후문", "time": "17:45"}, {"name": "배서은", "phone": "010-3778-9192", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "보정초 후문", "time": "17:45"}, {"name": "홍서윤", "phone": "010-5052-0645", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "죽전자이 2차", "time": "17:45"}, {"name": "박유나", "phone": "010-3821-9771", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "17:45"}, {"name": "전수현", "phone": "010-7101-2011", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 /죽현마을 아이파크 215-401", "time": "17:45"}, {"name": "조용우", "phone": "010-2723-1182", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성시립어린이집 / 삼성명가", "time": "17:45"}, {"name": "변하준", "phone": "010-7571-1515", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "죽현마을 아이파크", "time": "17:45"}, {"name": "박시현", "phone": "010-9245-3744", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 죽현마을 아이파크", "time": "17:45"}, {"name": "김은지", "phone": "010-8807-9473", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "꿈에그린", "time": "17:45"}, {"name": "우지안", "phone": "010-8981-9239", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 죽현마을 아이파크", "time": "17:45"}, {"name": "김유현", "phone": "010-9580-4871", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 더샵보정애비뉴 202동", "time": "17:45"}]}, "5호차": {"등원": [{"name": "박세혁", "phone": "010-9975-2359", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽전동, 꽃메마을현대홈타운 436동 (4차3단지)", "time": "9:50"}, {"name": "조시은", "phone": "010-3441-3141", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "이편한세상 죽전 프리미어포레 106동", "time": "9:50"}, {"name": "최주호", "phone": "010-6860-3987", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(죽전동, 내대지마을건영캐스빌) 706동101호", "time": "9:50"}, {"name": "이사랑", "phone": "010-3784-3706", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "CU포은대로 153점 /수금: 내대지 건영캐스빌 708동/", "time": "9:50"}, {"name": "이서우", "phone": "010-9280-6075", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "내대지마을 건영캐스빌", "time": "14:50"}, {"name": "서채아", "phone": "010-8355-2442", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽전로 238번길 16-18, 2층(주택)", "time": "14:50"}, {"name": "이서유", "phone": "010-5037-0328", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "남민서", "phone": "010-5135-0512", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "박다윤", "phone": "010-9975-2359", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "죽전동, 꽃메마을현대홈타운 436동 (4차3단지)", "time": "14:50"}, {"name": "한정민", "phone": "010-5701-3540", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "자연유치원 / 성현마을 우미2차", "time": "14:50"}, {"name": "김선유", "phone": "010-2504-1584", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "죽전동 진흥더블파크 1404-702\"", "time": "14:50"}, {"name": "서유하", "phone": "010-9593-7859", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "집(신촌초)", "time": "14:50"}, {"name": "양태양", "phone": "010-6365-3691", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "김채승", "phone": "010-9278-7455", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "지예린", "phone": "010-2252-2274", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성현마을 우미이노스빌2차 후문", "time": "14:50"}, {"name": "서유준", "phone": "010-6808-6818", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "정서진", "phone": "010-7170-8466", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "성연우", "phone": "010-4740-5460", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "안이서", "phone": "010-6326-9056", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "새터마을 힐스테이트", "time": "14:50"}, {"name": "문로이", "phone": "010-3173-8679", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "문수호", "phone": "010-3173-8679", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "최연준", "phone": "010-3856-6822", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "14:50"}, {"name": "김도윤", "phone": "010-9909-8064", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "죽전동 모아미래도 302-502", "time": "16:20"}, {"name": "서채리", "phone": "010-8355-2442", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "16:20"}, {"name": "한태호", "phone": "010-5701-3540", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성현마을 우미2차", "time": "16:20"}, {"name": "정수완", "phone": "010-5256-3364", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성현마을 광명샤인빌", "time": "16:20"}], "하원": [{"name": "최주호", "phone": "010-6860-3987", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(죽전동, 내대지마을건영캐스빌) 706동101호", "time": "14:50"}, {"name": "이사랑", "phone": "010-3784-3706", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "태전동 이레타워/ 내대지 건영캐스빌 708동(수,금)", "time": "14:50"}, {"name": "서채아", "phone": "010-8355-2442", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "죽전로 238번길 16-18, 2층(주택)", "time": "16:15"}, {"name": "한정민", "phone": "010-5701-3540", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "자연유치원 / 성현마을 우미2차", "time": "16:15"}, {"name": "김선유", "phone": "010-2504-1584", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "죽전동 진흥더블파크 1404-702\"", "time": "16:15"}, {"name": "김채승", "phone": "010-9278-7455", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "16:15"}, {"name": "지예린", "phone": "010-2252-2274", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성현마을 우미이노스빌2차 후문", "time": "16:15"}, {"name": "성연우", "phone": "010-4740-5460", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "16:15"}, {"name": "문로이", "phone": "010-3173-8679", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "16:15"}, {"name": "문수호", "phone": "010-3173-8679", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "16:15"}, {"name": "최연준", "phone": "010-3856-6822", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "", "time": "16:15"}, {"name": "조시은", "phone": "010-3441-3141", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "이편한세상 죽전 프리미어포레 106동", "time": "16:15"}, {"name": "김도윤", "phone": "010-9909-8064", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "죽전동 모아미래도 302-502", "time": "17:45"}, {"name": "지예은", "phone": "010-2252-2274", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "17:45"}, {"name": "서채리", "phone": "010-8355-2442", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "죽전로 238번길16-18 2층(주택)", "time": "17:45"}, {"name": "한태호", "phone": "010-5701-3540", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성현마을 우미2차", "time": "17:45"}, {"name": "정수완", "phone": "010-5256-3364", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성현마을 광명샤인빌", "time": "17:45"}, {"name": "장서현", "phone": "010-7404-2023", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "죽전동, e편한세상 죽전 프리미어포레) 정문 셔틀스테이션", "time": "17:45"}, {"name": "윤하윤", "phone": "010-6379-0708", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 /성현마을 우미이노스빌) 207동", "time": "17:45"}, {"name": "신예준", "phone": "010-3401-7526", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원/ 우미이노스빌 201-1005", "time": "17:45"}]}, "6호차": {"등원": [{"name": "이사랑", "phone": "010-3784-3706", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "광주시 포은대로437(CU포은대로153점)/수,금5호차", "time": "9:50"}, {"name": "조서아", "phone": "010-5560-4439", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "광주시 탄벌동535 (아소비큐미르 탄벌)", "time": "9:50"}, {"name": "허민준", "phone": "010-3170-5307", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "광주시 탄벌동535 (아소비큐미르 탄벌)", "time": "9:50"}, {"name": "박시온", "phone": "010-3636-3582", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "광주시 포은대로437 (CU포은대로153점)", "time": "9:50"}, {"name": "정유담", "phone": "010-7488-1356", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성원상떼빌아파트106동(벚꽃길)", "time": "14:50"}, {"name": "유동하", "phone": "010-34331485", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "풍천초등학교 후문", "time": "14:50"}, {"name": "윤인서", "phone": "010-3026-6233", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "우성6단지 정문/정평초등학교", "time": "14:50"}, {"name": "최다인", "phone": "010-3228-5894", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "대우푸르지오월드마크 골목길 주차장입구", "time": "14:50"}, {"name": "최준서", "phone": "010-3228-5894", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "수지포은대로467푸르지오월드마크정류장(최다인남매)", "time": "14:50"}, {"name": "김우빈", "phone": "010-5477-1622", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "롯데캐슬 하이브엘 주차장입구", "time": "14:50"}, {"name": "이 안", "phone": "010-9102-0721", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "쉐덴아파트 주차장입구", "time": "14:50"}, {"name": "남민서", "phone": "010-5135-0512", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "신촌초등학교", "time": "14:50"}, {"name": "박다윤", "phone": "010-9975-2359", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "신촌초등학교 (박세혁남매)", "time": "14:50"}, {"name": "이서유", "phone": "010-5037-0628", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "신촌초등학교", "time": "14:50"}, {"name": "양태양", "phone": "010-6365-3691", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "신촌초등학교", "time": "14:50"}, {"name": "정서진", "phone": "010-7170-8466", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "신촌초등학교", "time": "14:50"}, {"name": "서유준", "phone": "010-6808-6818", "days": {"월": true, "화": false, "수": false, "목": false, "금": false}, "location": "신촌초등학교(월,수 2호차 등원)", "time": "14:50"}, {"name": "서유하", "phone": "010-9593-7859", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "현대2차4단지,집에서등원(푸르지오 앞 셔틀탑승)", "time": "14:50"}], "하원": [{"name": "조서아", "phone": "010-5560-4439", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "광주시 청소년수련관 하차", "time": "14:50"}, {"name": "허민준", "phone": "010-3170-5307", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "광주시 벼루개로20(태전동 이레타워 하차)", "time": "14:50"}, {"name": "이사랑", "phone": "010-3784-3706", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "광주시 벼루개로20(태전동 이레타워)/수,금5호차", "time": "14:50"}, {"name": "박시온", "phone": "010-3636-3582", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "광주시 벼루개로20(태전동 이레타워 하차)", "time": "14:50"}, {"name": "조 별", "phone": "010-5092-1125", "days": {"월": true, "화": true, "수": true, "목": true, "금": false}, "location": "동원로얄듀크 309동 앞 (1501호)/화요일3호차 하원", "time": "16:20"}, {"name": "이 안", "phone": "010-9102-0721", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "쉐덴주차장", "time": "16:20"}, {"name": "최다인", "phone": "010-3228-5894", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "대우푸르지오월드마크 버스정류장(집)", "time": "16:20"}, {"name": "김우빈", "phone": "010-5477-1622", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "롯데캐슬 하이브엘 주차장입구", "time": "16:20"}, {"name": "유동하", "phone": "010-3433-1485", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "살레파인비스타 주차장입구", "time": "16:20"}, {"name": "정유담", "phone": "010-7488-1356", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "성원상떼빌아파트 키즈스테이션 앞", "time": "16:20"}, {"name": "윤인서", "phone": "010-3026-6233", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "우성6단지(월,금) /피아노학원(화,수,목)", "time": "16:20"}, {"name": "서민규", "phone": "010-2122-7747", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "풍덕천동 현대아파트101동(이사3/16부터)/2호차등원", "time": "16:20"}, {"name": "서유하", "phone": "010-9593-7859", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "집(신촌초 등원)", "time": "16:20"}, {"name": "정서진", "phone": "010-7170-8466", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "집(신촌초 등원)", "time": "16:20"}, {"name": "양태양", "phone": "010-6365-3691", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "(신촌초 등원)", "time": "16:20"}, {"name": "이서유", "phone": "010-5037-0628", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "용인대 타이곤태권도(신촌초 등원)", "time": "16:20"}, {"name": "남민서", "phone": "010-5135-0512", "days": {"월": false, "화": false, "수": false, "목": false, "금": false}, "location": "개별하원 (신촌초 등원)", "time": "16:20"}, {"name": "박다윤", "phone": "010-9975-2359", "days": {"월": false, "화": false, "수": false, "목": false, "금": false}, "location": "죽전동꽃메마을현대홈타운436동4차3단지/1호차하원", "time": "16:20"}, {"name": "김리나", "phone": "010-9037-3836", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "동원로얄듀크 303동/유정유치원 7호차등원", "time": "17:45"}, {"name": "김세인", "phone": "010-9937-1262본인", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "동원로얄듀크 306동 /개별등원", "time": "17:45"}, {"name": "구준후", "phone": "010-8908-9110", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "동원로얄듀크/유정유치원 5호차등원", "time": "17:45"}, {"name": "최정원", "phone": "010-7102-9345", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "동원로얄듀크/유정유치원 5호차등원", "time": "17:45"}, {"name": "최준서", "phone": "010-3228-5894", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "푸르지오월드마크 버스정류장앞(집)", "time": "17:45"}, {"name": "유나은", "phone": "010-2606-4297", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "진산로124 101동 롯데캐하이브엘 주차장입구/1호등원", "time": "17:45"}, {"name": "강승아", "phone": "010-8131-3571", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "주공9단지 /1호차등원", "time": "17:45"}]}, "7호차": {"등원": [{"name": "조서윤", "phone": "010-5303-3219", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "신갈동 롯데캐슬", "time": "9:50"}, {"name": "박채아", "phone": "010-6350-3115", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(16917) 경기도 용인시 기흥구 구성로 15 (마북동, e편한세상 구성역 플랫폼시티) 104동 204호", "time": "9:50"}, {"name": "정이안", "phone": "010-7725-7577", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(마북동, 연원마을현대아이파크) 103동/9:00이전 탑승해야함", "time": "9:50"}, {"name": "최주원", "phone": "010-5134-8969", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "e편한세상 구성역 플랫폼시티)  108동 /", "time": "9:50"}, {"name": "정한솔", "phone": "010-4417-2407", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "연원로 49 (보정동, 상떼빌 구성역 플랫폼시티)", "time": "9:50"}, {"name": "김도영", "phone": "010-9114-1919", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(마북동, e편한세상 구성역 플랫폼시티)", "time": "9:50"}, {"name": "이은유", "phone": "010-6423-8374", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "보정동 삼성명가 106동", "time": "14:50"}, {"name": "송희찬", "phone": "010-5018-9690", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "구성로 15 106-601 /송주아동생/", "time": "14:50"}, {"name": "김승현", "phone": "010-4294-3945", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "", "time": "14:50"}, {"name": "이소미", "phone": "010-9280-2350", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "삼성명가 110-1003", "time": "14:50"}, {"name": "유하율", "phone": "010-2503-0039", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 133", "time": "14:50"}, {"name": "김지유", "phone": "010-9802-1268", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "아이파크", "time": "14:50"}, {"name": "김아현", "phone": "010-3265-0274", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 래미안1차 103", "time": "14:50"}, {"name": "김나연", "phone": "010-3298-1268", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 118", "time": "14:50"}, {"name": "구민채", "phone": "010-3857-5716", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 114", "time": "14:50"}, {"name": "진하은", "phone": "010-4259-8149", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "구성 이편한세상", "time": "16:20"}, {"name": "김건우", "phone": "010-2801-4483", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 성원쌍떼빌", "time": "16:20"}, {"name": "김지효", "phone": "010-5148-8282", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "우림필유", "time": "16:20"}, {"name": "한은수", "phone": "010-9970-9400", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 103", "time": "16:20"}, {"name": "이성재", "phone": "010-5703-0519", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 쉐르빌", "time": "16:20"}, {"name": "황다온", "phone": "010-8797-3575", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 벽산", "time": "16:20"}, {"name": "황시후", "phone": "010-8544-2042", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "마북 벽산", "time": "16:20"}, {"name": "지예은", "phone": "010-2252-2274", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "박지호", "phone": "010-8968-5339", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성 이편한세상(할아버지)", "time": "16:20"}, {"name": "주하람", "phone": "010-3336-0486", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "송주아", "phone": "010-5018-9690", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "구성 이편한세상", "time": "16:20"}, {"name": "서아인", "phone": "010-8001-9606", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 래미안1차 102", "time": "16:20"}, {"name": "김리나", "phone": "010-9037-3836", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "홍예서", "phone": "010-3315-3602", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원) 하원 죽현마을 아이파크", "time": "16:20"}, {"name": "김시현", "phone": "010-9942-5788", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "유다현", "phone": "010-5028-0256", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "김은지", "phone": "010-8807-9473", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "주현우", "phone": "010-4929-8981", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "허유나", "phone": "010-4018-5389", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 보정로 26 상록데시앙", "time": "16:20"}, {"name": "우지안", "phone": "010-8981-9239", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 죽현마을 아이파크", "time": "16:20"}, {"name": "이윤서", "phone": "010-2021-5034", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 하원개별", "time": "16:20"}, {"name": "윤정우", "phone": "010-7288-2558", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 하원: 4차 3단지", "time": "16:20"}, {"name": "이하준", "phone": "010-5316-1784", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북동 블루밍 구성 더 센트럴 124동", "time": "16:20"}, {"name": "김민재", "phone": "010-4004-4672", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 금호베스트빌", "time": "16:20"}, {"name": "장예원", "phone": "010-4116-2837", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "박유나", "phone": "010-3821-9771", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "노가빈", "phone": "010-4818-6584", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "16:20"}, {"name": "윤하윤", "phone": "010-6379-0708", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 /성현마을 우미이노스빌) 207동", "time": "16:20"}], "하원": [{"name": "최주원", "phone": "010-5134-8969", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "e편한세상 구성역 플랫폼시티)  108동 /", "time": ""}, {"name": "정한솔", "phone": "010-4417-2407", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "연원로 49 (보정동, 상떼빌 구성역 플랫폼시티)", "time": ""}, {"name": "김도영", "phone": "010-9114-1919", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "(마북동, e편한세상 구성역 플랫폼시티)", "time": ""}, {"name": "방서안", "phone": "010-3623-1083", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(보정동, 용인보정 꿈에그린아파트)", "time": ""}, {"name": "한지수", "phone": "010-9970-9400", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "기흥구 보정로30 103-1101", "time": ""}, {"name": "이은유", "phone": "010-6423-8374", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "보정동 삼성명가 106동", "time": "16:15"}, {"name": "송희찬", "phone": "010-5018-9690", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "구성로 15 106-601 /송주아동생/", "time": "16:15"}, {"name": "정유하", "phone": "010-7725-7577", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(마북동, 연원마을현대아이파크) 103동 3/20까지 개별하원", "time": "16:15"}, {"name": "정이안", "phone": "010-7725-7577", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(마북동, 연원마을현대아이파크) 103동/3/20까지 개별하원", "time": "16:15"}, {"name": "김승현", "phone": "010-4294-3945", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "구성 태영데시앙", "time": "16:15"}, {"name": "유하율", "phone": "010-2503-0039", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 133", "time": "16:15"}, {"name": "김아현", "phone": "010-3265-0274", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 래미안1차 103", "time": "16:15"}, {"name": "김나연", "phone": "010-3298-1268", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 118", "time": "16:15"}, {"name": "최 혁", "phone": "010-2767-9612", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 118", "time": "16:15"}, {"name": "구민채", "phone": "010-3857-5716", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 114", "time": "16:15"}, {"name": "이서온", "phone": "010-5043-5770", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "한화 꿈에그린", "time": "16:15"}, {"name": "김도영", "phone": "010-9114-1919", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "(마북동, e편한세상 구성역 플랫폼시티)", "time": "16:15"}, {"name": "이수현", "phone": "010-7277-7524", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "보정초 후문/포스홈타운 212동", "time": "17:45"}, {"name": "진하은", "phone": "010-4259-8149", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "구성 이편한세상", "time": "17:45"}, {"name": "김건우", "phone": "010-2801-4483", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 성원쌍떼빌", "time": "17:45"}, {"name": "김지효", "phone": "010-5148-8282", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "우림필유", "time": "17:45"}, {"name": "한은수", "phone": "010-9970-9400", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "동아쏠레시티 103", "time": "17:45"}, {"name": "이성재", "phone": "010-5703-0519", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 쉐르빌", "time": "17:45"}, {"name": "황다온", "phone": "010-8797-3575", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 벽산", "time": "17:45"}, {"name": "황시후", "phone": "010-8544-2042", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "마북 벽산", "time": "17:45"}, {"name": "박지호", "phone": "010-8968-5339", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "구성 이편한세상(할아버지)", "time": "17:45"}, {"name": "송주아", "phone": "010-5018-9690", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "구성 이편한세상", "time": "17:45"}, {"name": "서아인", "phone": "010-8001-9606", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 래미안1차 102", "time": "17:45"}, {"name": "김소율", "phone": "010-5002-0500", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "자연유치원 / 개별하원 월 : 동대문엽떡앞 (큰대로변)", "time": "17:45"}, {"name": "김시현", "phone": "010-9942-5788", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 동아솔레시티", "time": "17:45"}, {"name": "유다현", "phone": "010-5028-0256", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 동아솔레시티", "time": "17:45"}, {"name": "이하준", "phone": "010-5316-1784", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북동 블루밍 구성 더 센트럴 124동", "time": "17:45"}, {"name": "김민재", "phone": "010-4004-4672", "days": {"월": true, "화": true, "수": true, "목": false, "금": false}, "location": "마북 금호베스트빌", "time": "17:45"}, {"name": "노가빈", "phone": "010-4818-6584", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원", "time": "17:45"}, {"name": "박채아", "phone": "010-6350-3115", "days": {"월": true, "화": true, "수": true, "목": true, "금": true}, "location": "(16917) 경기도 용인시 기흥구 구성로 15 (마북동, e편한세상 구성역 플랫폼시티) 104동 204호", "time": "17:45"}, {"name": "최주원", "phone": "010-5134-8969", "days": {"월": true, "화": true, "수": true, "목": true, "금": false}, "location": "e편한세상 구성역 플랫폼시티)  108동 /", "time": "17:45"}, {"name": "주현우", "phone": "010-4929-8981", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 동아솔레시티", "time": "17:45"}, {"name": "허유나", "phone": "010-4018-5389", "days": {"월": true, "화": true, "수": false, "목": false, "금": false}, "location": "유정유치원 / 보정로 26 상록데시앙", "time": "17:45"}]}};
+
+// ── 탭 전환 ──
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-pane').forEach(p => {
+    p.classList.remove('on');
+    p.style.display = 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('on'));
+  const pane = document.getElementById('tab-' + name);
+  if (pane) {
+    pane.classList.add('on');
+    pane.style.display = (name === '통계') ? 'flex' : 'block';
+  }
+  if (el) el.classList.add('on');
+  if (name === '명단')  updateDashboard();
+  if (name === '체크')  buildChecklist();
+  if (name === '통계') { renderStats(); }
+  if (name === '이력')  renderLogs();
+  if (name === '문자')  { buildSmsNumbers(); buildSmsTemplates(); rebuildSmsSelects(); }
+}
+function toggleMenu() {
+  const d = document.getElementById('sidebar-drawer');
+  const o = document.getElementById('sidebar-overlay');
+  if (!d) return;
+  if (d.classList.contains('open')) { closeMenu(); return; }
+  d.classList.add('open');
+  if (o) { o.style.display='block'; setTimeout(()=>o.classList.add('open'),10); }
+  document.body.style.overflow='hidden';
+}
+function closeMenu() {
+  if (window.innerWidth >= 768) return; // PC에서는 닫지 않음
+  const d = document.getElementById('sidebar-drawer');
+  const o = document.getElementById('sidebar-overlay');
+  if (d) d.classList.remove('open');
+  if (o) { o.classList.remove('open'); setTimeout(()=>{ o.style.display='none'; },260); }
+  document.body.style.overflow='';
+}
+function openMenu() { toggleMenu(); }
+function initTouchEvents() {
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+    btn.onclick = function() { switchTab(btn.dataset.tab, btn); };
+  });
+}
+function reinitTouchEvents() {
+  document.querySelectorAll('.nav-item[data-bus]').forEach(nav => {
+    nav.onclick = function() { selectBus(nav.dataset.bus, nav); if(window.innerWidth<768) closeMenu(); };
+  });
+  document.querySelectorAll('[id^="snav-"]').forEach(el => {
+    const key = el.id.replace('snav-','');
+    el.onclick = function() { selectStatNav(key, el); };
+  });
+}
+
+
+const BUS_COLOR_PALETTE = [
+  {dot:'#2563EB', badge:'b1', hex:{h:'1565C0',s:'E3F2FD'}},
+  {dot:'#059669', badge:'b2', hex:{h:'2E7D32',s:'E8F5E9'}},
+  {dot:'#D97706', badge:'b3', hex:{h:'E65100',s:'FFF3E0'}},
+  {dot:'#DB2777', badge:'b4', hex:{h:'880E4F',s:'FCE4EC'}},
+  {dot:'#7C3AED', badge:'b5', hex:{h:'4527A0',s:'EDE7F6'}},
+  {dot:'#EA580C', badge:'b6', hex:{h:'BF360C',s:'FBE9E7'}},
+  {dot:'#0891B2', badge:'b7', hex:{h:'0C4A6E',s:'E0F2FE'}},
+  {dot:'#16A34A', badge:'b8', hex:{h:'14532D',s:'DCFCE7'}},
+];
+// CSS for dynamic badges
+const dynamicBadgeCSS = document.createElement('style');
+document.head.appendChild(dynamicBadgeCSS);
+
+function getBusColorIdx(busName) {
+  const names = Object.keys(DATA).sort();
+  const idx = names.indexOf(busName);
+  return idx >= 0 ? idx % BUS_COLOR_PALETTE.length : 0;
+}
+function getBusColor(busName) {
+  return BUS_COLOR_PALETTE[getBusColorIdx(busName)];
+}
+// 동적 뱃지 CSS 생성
+function refreshBusColors() {
+  const rules = Object.keys(DATA).map((bus, i) => {
+    const c = BUS_COLOR_PALETTE[i % BUS_COLOR_PALETTE.length];
+    return `.dbus-${CSS.escape(bus)}{background:#${c.hex.s};color:#${c.hex.h}}`;
+  });
+  dynamicBadgeCSS.textContent = rules.join('\n');
+}
+const DAYS = ['월','화','수','목','금'];
+const TIME_CLASS = {'9:50':'t-950','14:50':'t-1450','16:15':'t-1615','16:20':'t-1620','17:45':'t-1745'};
+
+// ── localStorage 저장/불러오기 ──
+const LS_KEY = 'shuttleBusData_v1';
+function loadData() {
+  try {
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+        // 실제 학생 데이터가 있는지 확인
+        const total = Object.values(parsed).reduce((s, m) =>
+          s + (m.등원||[]).length + (m.하원||[]).length, 0);
+        if (total > 0) return parsed;
+      }
+    }
+  } catch(e) { console.warn('localStorage 불러오기 실패:', e); }
+  // localStorage가 비어있거나 데이터 없으면 원본 사용
+  return JSON.parse(JSON.stringify(INIT_DATA));
+}
+function saveData() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(DATA));
+    setSaveState(true);
+  } catch(e) { console.warn('localStorage 저장 실패:', e); }
+}
+function setSaveState(saved) {
+  const dot = document.getElementById('saveDot');
+  const txt = document.getElementById('saveText');
+  if (!dot) return;
+  if (saved) { dot.className='save-dot saved'; txt.textContent='저장됨'; }
+  else       { dot.className='save-dot unsaved'; txt.textContent='저장 중…'; }
+}
+
+let DATA = JSON.parse(JSON.stringify(INIT_DATA));
+let activeBus='all', activeMode='all', activeDays=new Set(), activeTimes=new Set();
+let editTarget=null, deleteTarget=null;
+
+function flatRows(){
+  const rows=[];
+  for(const [bus,modes] of Object.entries(DATA))
+    for(const [mode,students] of Object.entries(modes))
+      students.forEach((s,idx)=>rows.push({...s,bus,mode,idx}));
+  return rows;
+}
+
+function uniqueCount(rows) {
+  // 전화번호가 있으면 전화번호, 없으면 이름으로 중복 제거
+  return new Set(rows.map(r => r.phone && r.phone.trim() ? r.phone.trim() : r.name.trim())).size;
+}
+
+function updateStats(){
+  refreshBusColors();
+  rebuildBusNav();
+  rebuildBusSelect();
+  const all=flatRows();
+  const uniqueTotal = uniqueCount(all);
+  const uniqueDong  = uniqueCount(all.filter(r=>r.mode==='등원'));
+  const uniqueHa    = uniqueCount(all.filter(r=>r.mode==='하원'));
+
+  document.getElementById('totalBadge').textContent=`전체 ${uniqueTotal}명`;
+  document.getElementById('cnt-all').textContent=uniqueTotal;
+  for(const b of Object.keys(DATA)){
+    const el=document.getElementById(`cnt-${b}`);
+    if(el){
+      const busRows=[...(DATA[b].등원||[]),...(DATA[b].하원||[])];
+      el.textContent=uniqueCount(busRows);
+    }
+  }
+  let html=`<div class="stat-card"><div class="stat-n">${uniqueTotal}</div><div class="stat-label">전체 학생</div></div>
+    <div class="stat-card"><div class="stat-n" style="color:var(--green)">${uniqueDong}</div><div class="stat-label">등원</div></div>
+    <div class="stat-card"><div class="stat-n" style="color:var(--red)">${uniqueHa}</div><div class="stat-label">하원</div></div>`;
+  for(const b of Object.keys(DATA)){
+    const busRows=[...(DATA[b].등원||[]),...(DATA[b].하원||[])];
+    html+=`<div class="stat-card"><div class="stat-n">${uniqueCount(busRows)}</div><div class="stat-label">${b}</div></div>`;
+  }
+  document.getElementById('statsRow').innerHTML=html;
+}
+
+function clearFilters(){
+  activeDays.clear();
+  activeTimes.clear();
+  document.querySelectorAll('[data-day]').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('[data-time]').forEach(c=>c.classList.remove('active'));
+  render();
+}
+
+function render(){
+  // searchInput이 없으면(탭이 숨겨진 상태) 그냥 리턴하지 않고 빈 문자열로 처리
+  const clearBtn = document.getElementById('clearFilterBtn');
+  if(clearBtn) clearBtn.style.display=(activeDays.size>0||activeTimes.size>0)?'inline-flex':'none';
+  const searchEl = document.getElementById('searchInput');
+  const q = searchEl ? searchEl.value.toLowerCase() : '';
+  let rows=flatRows().filter(r=>{
+    if(activeBus!=='all'&&r.bus!==activeBus) return false;
+    if(activeMode!=='all'&&r.mode!==activeMode) return false;
+    if(activeDays.size>0 && !([...activeDays].some(d=>r.days[d]))) return false;
+    if(activeTimes.size>0 && !activeTimes.has(r.time)) return false;
+    if(q&&!r.name.toLowerCase().includes(q)&&!(r.location||'').toLowerCase().includes(q)&&!(r.phone||'').includes(q)) return false;
+    return true;
+  });
+  const countBadgeEl = document.getElementById('countBadge');
+  if(countBadgeEl) countBadgeEl.textContent=`${rows.length}명`;
+  const tbody=document.getElementById('tableBody');
+  const empty=document.getElementById('emptyState');
+  if(!tbody) return;
+  if(!rows.length){tbody.innerHTML='';if(empty)empty.style.display='block';return;}
+  if(empty) empty.style.display='none';
+
+  tbody.innerHTML=rows.map(r=>{
+    const busIdx=Object.keys(DATA).sort().indexOf(r.bus);
+    const busColorObj=BUS_COLOR_PALETTE[busIdx>=0?busIdx%BUS_COLOR_PALETTE.length:0];
+    const bc=`dbus-${r.bus}`;
+    const tc=TIME_CLASS[r.time]||'t-none';
+    const timeLabel=r.time||'—';
+    const dayPips=DAYS.map(d=>`<div class="day-pip ${r.days[d]?'day-y':'day-n'}">${d}</div>`).join('');
+    const phoneNum=r.phone||'';
+    const phoneClean=phoneNum.replace(/-/g,'');
+    const phoneHtml=phoneNum
+      ? `<div class="phone-wrap">
+           <a class="phone-link" href="tel:${phoneClean}" ontouchstart="haptic(30)" onclick="haptic(30)" data-phone="${phoneNum}">📞 ${phoneNum}</a>
+           <a class="sms-btn" href="sms:${phoneClean}" ontouchstart="haptic(20)" onclick="haptic(20)">💬 문자</a>
+         </div>`
+      : '—';
+    return `<tr>
+      <td style="font-weight:600">${r.name}</td>
+      <td><span class="bus-badge ${bc}">${r.bus}</span></td>
+      <td><span class="mode-badge mode-${r.mode}">${r.mode}</span></td>
+      <td><span class="time-badge ${tc}">${timeLabel}</span></td>
+      <td><div class="days-wrap">${dayPips}</div></td>
+      <td><div class="location-cell" title="${r.location||''}">${r.location||'—'}</div></td>
+      <td>${phoneHtml}</td>
+      <td>${getMemoCell(r.bus,r.mode,r.idx,r.name)}</td>
+      <td><div class="actions">
+        <div class="icon-btn edit" title="수정" onclick="openEdit('${r.bus}','${r.mode}',${r.idx})">✏️</div>
+        <div class="icon-btn del" title="삭제" onclick="openDelete('${r.bus}','${r.mode}',${r.idx},'${r.name}')">🗑</div>
+      </div></td>
+    </tr>`;
+  }).join('');
+  requestAnimationFrame(attachCheckRowEvents);
+}
+
+function selectBus(bus,el){
+  activeBus=bus;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');render();
+  closeMenu(); // 모바일: 선택 후 메뉴 닫기
+}
+function setMode(mode,el){
+  activeMode=mode;
+  document.querySelectorAll('[data-mode]').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');render();
+}
+function toggleDay(day,el){
+  if(activeDays.has(day)){activeDays.delete(day);el.classList.remove('active');}
+  else{activeDays.add(day);el.classList.add('active');}
+  render();
+}
+function toggleTime(time,el){
+  if(activeTimes.has(time)){activeTimes.delete(time);el.classList.remove('active');}
+  else{activeTimes.add(time);el.classList.add('active');}
+  render();
+}
+
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function closeIfBg(e,id){if(e.target.id===id)closeModal(id);}
+
+// ── 시간 직접 입력 핸들러 ──
+function onTimeSelectChange(sel){
+  const custom = document.getElementById('f_time_custom');
+  if(sel.value === '__custom__'){
+    custom.style.display = 'block';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+    custom.value = '';
+  }
+}
+function onTimeCustomInput(inp){
+  // 숫자+콜론만 허용, 자동 콜론 삽입
+  let v = inp.value.replace(/[^\d:]/g,'');
+  if(v.length === 2 && !v.includes(':')) v = v + ':';
+  inp.value = v;
+}
+function getFormTime(){
+  const sel = document.getElementById('f_time');
+  if(sel.value === '__custom__'){
+    return document.getElementById('f_time_custom').value.trim();
+  }
+  return sel.value;
+}
+function setFormTime(time){
+  const sel = document.getElementById('f_time');
+  const custom = document.getElementById('f_time_custom');
+  const presets = ['','9:50','14:50','16:15','16:20','17:45'];
+  if(presets.includes(time)){
+    sel.value = time;
+    custom.style.display = 'none';
+    custom.value = '';
+  } else if(time){
+    sel.value = '__custom__';
+    custom.style.display = 'block';
+    custom.value = time;
+  } else {
+    sel.value = '';
+    custom.style.display = 'none';
+    custom.value = '';
+  }
+}
+
+function clearForm(){
+  ['f_name','f_phone','f_loc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_bus').value='';
+  document.getElementById('f_mode').value='';
+  setFormTime('');
+  DAYS.forEach(d=>document.getElementById(`d_${d}`).checked=false);
+}
+function checkAllDays(){DAYS.forEach(d=>document.getElementById(`d_${d}`).checked=true);}
+
+function openAdd(){
+  editTarget=null;clearForm();
+  if(activeBus!=='all') document.getElementById('f_bus').value=activeBus;
+  if(activeMode!=='all') document.getElementById('f_mode').value=activeMode;
+  if(activeTimes.size===1) setFormTime([...activeTimes][0]);
+  document.getElementById('modalTitle').textContent='학생 추가';
+  document.getElementById('saveBtn').textContent='추가';
+  openModal('formOverlay');
+}
+function openEdit(bus,mode,idx){
+  editTarget={bus,mode,idx};
+  const s=DATA[bus][mode][idx];
+  document.getElementById('f_name').value=s.name;
+  document.getElementById('f_phone').value=s.phone||'';
+  document.getElementById('f_bus').value=bus;
+  document.getElementById('f_mode').value=mode;
+  setFormTime(s.time||'');
+  DAYS.forEach(d=>document.getElementById(`d_${d}`).checked=!!s.days[d]);
+  document.getElementById('f_loc').value=s.location||'';
+  document.getElementById('modalTitle').textContent=`수정 — ${s.name}`;
+  document.getElementById('saveBtn').textContent='저장';
+  openModal('formOverlay');
+}
+function saveStudent(){
+  const name=document.getElementById('f_name').value.trim();
+  const phone=document.getElementById('f_phone').value.trim();
+  const bus=document.getElementById('f_bus').value;
+  const mode=document.getElementById('f_mode').value;
+  const time=getFormTime();
+  const loc=document.getElementById('f_loc').value.trim();
+  const days={};DAYS.forEach(d=>days[d]=document.getElementById(`d_${d}`).checked);
+  if(!name){toast('이름을 입력해 주세요','error');return;}
+  if(!bus){toast('호차를 선택해 주세요','error');return;}
+  if(!mode){toast('등원/하원을 선택해 주세요','error');return;}
+  // 시간 형식 검사 (입력한 경우만)
+  if(time && !/^\d{1,2}:\d{2}$/.test(time)){
+    toast('시간 형식이 올바르지 않습니다 (예: 13:00)','error');return;
+  }
+  const student={name,phone,days,location:loc,time};
+  if(editTarget){
+    const{bus:ob,mode:om,idx}=editTarget;
+    if(ob!==bus||om!==mode){DATA[ob][om].splice(idx,1);DATA[bus][mode].push(student);}
+    else DATA[bus][mode][idx]=student;
+    toast(`${name} 정보가 수정됐습니다 ✅`,'success');
+  }else{
+    DATA[bus][mode].push(student);
+    toast(`${name} 학생이 추가됐습니다 ✅`,'success');
+  }
+  closeModal('formOverlay');updateStats();render();saveData();updateDashboard();
+  if(editTarget) addLog('edit', `${name} (${bus} ${mode})`);
+  else addLog('add', `${name} → ${bus} ${mode}`);
+}
+function openDelete(bus,mode,idx,name){
+  deleteTarget={bus,mode,idx};
+  document.getElementById('confirmName').textContent=name;
+  openModal('confirmOverlay');
+}
+function confirmDelete(){
+  if(!deleteTarget)return;
+  const{bus,mode,idx}=deleteTarget;
+  const name=DATA[bus][mode][idx].name;
+  DATA[bus][mode].splice(idx,1);
+  deleteTarget=null;closeModal('confirmOverlay');
+  toast(`${name} 학생이 삭제됐습니다`,'success');
+  updateStats();render();saveData();
+  addLog('del',`${name}`);
+  updateDashboard();
+  addLog('del', `${name} (${DATA[bus]?'':bus})`  );
+}
+
+// ── 엑셀 다운로드 ──
+function downloadExcel(){
+  const btn=document.getElementById('xlsBtn');
+  btn.textContent='⏳ 생성 중...';btn.disabled=true;
+  setTimeout(()=>{
+    try{
+      const wb=XLSX.utils.book_new();
+      const BC={};
+      Object.keys(DATA).forEach((b,i)=>{BC[b]=BUS_COLOR_PALETTE[i%BUS_COLOR_PALETTE.length].hex;});
+      const border=()=>({top:{style:'thin',color:{rgb:'BDBDBD'}},bottom:{style:'thin',color:{rgb:'BDBDBD'}},left:{style:'thin',color:{rgb:'BDBDBD'}},right:{style:'thin',color:{rgb:'BDBDBD'}}});
+      const hs=(bg)=>({font:{bold:true,color:{rgb:'FFFFFF'},sz:11,name:'Arial'},fill:{patternType:'solid',fgColor:{rgb:bg}},alignment:{horizontal:'center',vertical:'center'},border:border()});
+      const ss=(bg)=>({font:{bold:true,color:{rgb:'FFFFFF'},sz:11,name:'Arial'},fill:{patternType:'solid',fgColor:{rgb:bg}},alignment:{horizontal:'left',vertical:'center'},border:border()});
+      const ds=(bg,c=false)=>({font:{sz:10,name:'Arial',color:{rgb:'212121'}},fill:{patternType:'solid',fgColor:{rgb:bg}},alignment:{horizontal:c?'center':'left',vertical:'center',wrapText:true},border:border()});
+      const don=()=>({font:{bold:true,sz:10,color:{rgb:'0D47A1'}},fill:{patternType:'solid',fgColor:{rgb:'B3E5FC'}},alignment:{horizontal:'center',vertical:'center'},border:border()});
+      const doff=()=>({font:{sz:10,color:{rgb:'CCCCCC'}},fill:{patternType:'solid',fgColor:{rgb:'EEEEEE'}},alignment:{horizontal:'center',vertical:'center'},border:border()});
+      const ec=XLSX.utils.encode_cell;
+      const NCOLS=11;
+
+      for(const[bname,modes] of Object.entries(DATA)){
+        const col=BC[bname]||{h:'455A64',s:'ECEFF1'};
+        const ws={};const mg=[];let R=0;
+        // 타이틀
+        ws[ec({r:R,c:0})]={v:`🚌 ${bname} 탑승 명단 (2026)`,s:hs(col.h)};
+        for(let c=1;c<NCOLS;c++) ws[ec({r:R,c})]={v:'',s:hs(col.h)};
+        mg.push({s:{r:R,c:0},e:{r:R,c:NCOLS-1}});R++;
+        for(const mode of['등원','하원']){
+          const students=modes[mode]||[];if(!students.length)continue;
+          const mhex=mode==='등원'?'1B5E20':'7F0000';
+          ws[ec({r:R,c:0})]={v:`  ${mode==='등원'?'등원':'하원'}  총 ${students.length}명`,s:ss(mhex)};
+          for(let c=1;c<NCOLS;c++) ws[ec({r:R,c})]={v:'',s:ss(mhex)};
+          mg.push({s:{r:R,c:0},e:{r:R,c:NCOLS-1}});R++;
+          ['No','이름','전화번호','시간','월','화','수','목','금','','탑승/하차 장소'].forEach((h,c)=>{
+            ws[ec({r:R,c})]={v:h,s:hs(col.h)};});R++;
+          students.forEach((s,i)=>{
+            const bg=i%2===0?col.s:'FFFFFF';
+            const row=[i+1,s.name,s.phone||'',s.time||'',null,null,null,null,null,'',s.location||''];
+            row.forEach((v,c)=>{
+              if(c>=4&&c<=8){const dk=DAYS[c-4];const on=!!s.days[dk];ws[ec({r:R,c})]={v:on?'●':'',s:on?don():doff()};}
+              else ws[ec({r:R,c})]={v:v===null?'':v,s:ds(bg,c===0||c===2||c===3||c===9)};
+            });R++;
+          });
+          ws[ec({r:R,c:0})]={v:`소계: ${students.length}명`,s:hs(col.h)};
+          ws[ec({r:R,c:1})]={v:'',s:hs(col.h)};mg.push({s:{r:R,c:0},e:{r:R,c:1}});
+          for(let c=2;c<NCOLS;c++) ws[ec({r:R,c})]={v:'',s:hs(col.h)};R+=2;
+        }
+        ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R,c:NCOLS-1}});
+        ws['!merges']=mg;
+        ws['!cols']=[{wch:5},{wch:12},{wch:14},{wch:7},{wch:5},{wch:5},{wch:5},{wch:5},{wch:5},{wch:4},{wch:42}];
+        XLSX.utils.book_append_sheet(wb,ws,bname);
+      }
+
+      // 전체명단
+      const wa={};const ma=[];const NC2=11;let R2=0;
+      wa[ec({r:R2,c:0})]={v:'🚌 2026년 셔틀버스 전체 탑승 명단',s:hs('37474F')};
+      for(let c=1;c<NC2;c++) wa[ec({r:R2,c})]={v:'',s:hs('37474F')};
+      ma.push({s:{r:R2,c:0},e:{r:R2,c:NC2-1}});R2++;
+      ['No','호차','이름','전화번호','시간','월','화','수','목','금','탑승/하차 장소'].forEach((h,c)=>{
+        wa[ec({r:R2,c})]={v:h,s:hs('546E7A')};});R2++;
+      let tn=0;
+      for(const[bname,modes] of Object.entries(DATA)){
+        const col=BC[bname]||{h:'455A64',s:'ECEFF1'};
+        for(const mode of['등원','하원']){
+          const students=modes[mode]||[];if(!students.length)continue;
+          wa[ec({r:R2,c:0})]={v:`  ${bname}  ${mode}  (${students.length}명)`,s:ss(col.h)};
+          for(let c=1;c<NC2;c++) wa[ec({r:R2,c})]={v:'',s:ss(col.h)};
+          ma.push({s:{r:R2,c:0},e:{r:R2,c:NC2-1}});R2++;
+          students.forEach((s,i)=>{
+            tn++;const bg=i%2===0?col.s:'FFFFFF';
+            const rd=[tn,bname,s.name,s.phone||'',s.time||'',null,null,null,null,null,s.location||''];
+            rd.forEach((v,c)=>{
+              if(c>=5&&c<=9){const dk=DAYS[c-5];const on=!!s.days[dk];wa[ec({r:R2,c})]={v:on?'●':'',s:on?don():doff()};}
+              else wa[ec({r:R2,c})]={v:v===null?'':v,s:ds(bg,c<=1||c===3||c===4)};
+            });R2++;
+          });
+        }
+      }
+      wa['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R2,c:NC2-1}});
+      wa['!merges']=ma;
+      wa['!cols']=[{wch:5},{wch:8},{wch:12},{wch:14},{wch:7},{wch:5},{wch:5},{wch:5},{wch:5},{wch:5},{wch:42}];
+      XLSX.utils.book_append_sheet(wb,wa,'전체명단',true);
+
+      const now=new Date();
+      const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+      const fname=`셔틀버스_명단_${stamp}.xlsx`;
+      const wbout=XLSX.write(wb,{bookType:'xlsx',type:'base64'});
+      const bc2=atob(wbout);
+      const ba=new Uint8Array(bc2.length);
+      for(let i=0;i<bc2.length;i++) ba[i]=bc2.charCodeAt(i);
+      const blob=new Blob([ba],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download=fname;a.style.display='none';
+      document.body.appendChild(a);a.click();
+      setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},2000);
+      toast('엑셀 파일이 다운로드됐습니다 📥','success');
+    }catch(e){toast('엑셀 생성 중 오류가 발생했습니다','error');console.error(e);}
+    finally{btn.textContent='⬇ 엑셀';btn.disabled=false;}
+  },100);
+}
+
+
+// ── 엑셀 업로드 ──
+let pendingUploadData = null;
+
+function openUpload() {
+  pendingUploadData = null;
+  document.getElementById('applyUploadBtn').disabled = true;
+  document.getElementById('uploadPreview').style.display = 'none';
+  document.getElementById('xlsFileInput').value = '';
+  openModal('uploadOverlay');
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.add('drag-over');
+}
+function onDragLeave(e) {
+  document.getElementById('dropZone').classList.remove('drag-over');
+}
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processXlsFile(file);
+}
+function onFileSelect(input) {
+  if (input.files[0]) processXlsFile(input.files[0]);
+}
+
+function processXlsFile(file) {
+  if (!file.name.endsWith('.xlsx')) {
+    toast('.xlsx 파일만 업로드 가능합니다', 'error'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const parsed = parseXlsToData(wb);
+      if (!parsed) {
+        // 어떤 시트가 있는지 알려주기
+        const sheets = wb.SheetNames.join(', ');
+        toast(`파일을 인식할 수 없습니다. 시트명: ${sheets}`, 'error');
+        return;
+      }
+
+      pendingUploadData = parsed;
+
+      // 미리보기 통계
+      let totalN = 0;
+      const stats = [];
+      for (const [bus, modes] of Object.entries(parsed)) {
+        const n = (modes.등원||[]).length + (modes.하원||[]).length;
+        totalN += n;
+        if (n > 0) stats.push(`${bus} ${n}명`);
+      }
+      const preview = document.getElementById('uploadPreview');
+      document.getElementById('uploadFileName').textContent = `📄 ${file.name}  (총 ${totalN}명)`;
+      document.getElementById('uploadStats').innerHTML = stats.map(s=>
+        `<span class="upload-stat">${s}</span>`).join('');
+      preview.style.display = 'block';
+      document.getElementById('applyUploadBtn').disabled = false;
+      toast('파일을 읽었습니다. 반영하기를 눌러 적용하세요.', 'success');
+    } catch(err) {
+      toast('파일 읽기 오류: ' + err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseXlsToData(wb) {
+  const sheetBuses = wb.SheetNames.filter(s => s !== '전체명단' && s.endsWith('호차'));
+  const busNames = sheetBuses.length > 0 ? sheetBuses : Object.keys(DATA);
+  const result = {};
+  busNames.forEach(b => { result[b] = {등원:[], 하원:[]}; });
+  let parsedAny = false;
+
+  for (const sheetName of wb.SheetNames) {
+    const matchedBus = busNames.find(b => sheetName === b);
+    if (!matchedBus) continue;
+
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+    // ── 헤더 행 찾기 ──
+    let hdrIdx = -1;
+    let iName=-1, iPhone=-1, iTime=-1, iLoc=-1;
+    const dayIdx = {월:-1, 화:-1, 수:-1, 목:-1, 금:-1};
+
+    for (let i = 0; i < Math.min(rows.length, 15); i++) {
+      const r = rows[i].map(v => String(v===null||v===undefined?'':v).trim());
+      if (r.includes('이름') && r.includes('전화번호')) {
+        hdrIdx = i;
+        iName  = r.findIndex(h => h === '이름');
+        iPhone = r.findIndex(h => h === '전화번호');
+        iTime  = r.findIndex(h => h === '시간' || h === '탑승시간');
+        iLoc   = r.findIndex(h => h.includes('장소'));
+        ['월','화','수','목','금'].forEach(d => { dayIdx[d] = r.findIndex(h => h === d); });
+        break;
+      }
+    }
+    if (hdrIdx < 0) continue;
+
+    let currentMode = null;
+
+    for (let i = 0; i < rows.length; i++) {
+      const raw = rows[i];
+      const row = raw.map(v => String(v===null||v===undefined?'':v).trim());
+      const joined = row.join('');
+      if (!joined) continue;
+      if (i === hdrIdx) continue;
+      // 소계/타이틀/빈행은 스킵하되 currentMode 유지
+      if (joined.includes('소계') || joined.includes('탑승 명단') || joined.includes('탑승명단')) continue;
+      // 타이틀 행 스킵 (🚌 포함)
+      if (joined.includes('호차') && joined.includes('명단') && !joined.includes('010')) continue;
+
+      // 등원/하원 구분 행 감지
+      const hasPhone = row.some(v => /\d{3}[-\s]?\d{3,4}[-\s]?\d{4}/.test(v));
+      if (!hasPhone) {
+        // 등원/하원 키워드가 있으면 currentMode 변경
+        if (joined.includes('등원') && !joined.includes('소계')) { currentMode = '등원'; continue; }
+        if (joined.includes('하원') && !joined.includes('소계')) { currentMode = '하원'; continue; }
+        // 그 외 (타이틀, 소계, 빈행 등)는 currentMode 유지하고 스킵
+        continue;
+      }
+      if (!currentMode) continue;
+
+      // 헤더 기반으로 각 필드 읽기
+      const name  = iName  >= 0 ? row[iName]  : '';
+      const phone = iPhone >= 0 ? row[iPhone] : '';
+      if (!name || !phone || name === '이름') continue;
+      // 전화번호 형식 체크 완화 - 숫자+하이픈이면 허용
+      if (!phone.match(/\d{3}[-\s]?\d{3,4}[-\s]?\d{4}/)) continue;
+
+      // 시간
+      let time = iTime >= 0 ? row[iTime] : '';
+      if (!time) {
+        for (let c = 0; c < row.length; c++) {
+          if (c === iPhone || c === iLoc) continue;
+          if (/^\d{1,2}:\d{2}$/.test(row[c])) { time = row[c]; break; }
+        }
+      }
+
+      const location = iLoc >= 0 ? row[iLoc] : '';
+
+      // 요일 — 헤더 인덱스로 정확히 읽기
+      const days = {월:false, 화:false, 수:false, 목:false, 금:false};
+      const ON_VALS = new Set(['●','O','ㅇ','o','◎','✓','v','true','TRUE','1']);
+      ['월','화','수','목','금'].forEach(d => {
+        if (dayIdx[d] >= 0) {
+          const v = row[dayIdx[d]];
+          const rv = raw[dayIdx[d]];
+          days[d] = ON_VALS.has(v) || rv === true || rv === 1;
+        }
+      });
+
+      result[matchedBus][currentMode].push({name, phone, time, location, days});
+      parsedAny = true;
+    }
+  }
+
+  // 폴백: 전체명단 시트
+  if (!parsedAny) {
+    const allSheet = wb.SheetNames.find(s => s === '전체명단');
+    if (!allSheet) return null;
+    const ws = wb.Sheets[allSheet];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    let hdrIdx2 = -1;
+    for (let i = 0; i < Math.min(rows.length,10); i++) {
+      const r = rows[i].map(v=>String(v).trim());
+      if (r.includes('이름') && r.includes('전화번호') && r.includes('호차')) { hdrIdx2=i; break; }
+    }
+    if (hdrIdx2 < 0) return null;
+    const hdr = rows[hdrIdx2].map(v=>String(v).trim());
+    const iN=hdr.indexOf('이름'), iP=hdr.indexOf('전화번호');
+    const iB=hdr.indexOf('호차'), iM=hdr.indexOf('구분');
+    const iT=hdr.findIndex(h=>h==='시간'||h==='탑승시간');
+    const iL=hdr.findIndex(h=>h.includes('장소'));
+    const dIdx={};['월','화','수','목','금'].forEach(d=>{dIdx[d]=hdr.indexOf(d);});
+    for (let i=hdrIdx2+1; i<rows.length; i++) {
+      const raw=rows[i]; const row=raw.map(v=>String(v===null?'':v).trim());
+      const name=row[iN]||'', phone=row[iP]||'';
+      if (!name||!phone||name==='이름'||name==='소계') continue;
+      const bus=row[iB]||'', mode=row[iM]||'';
+      if (!result[bus]||!mode) continue;
+      const time=iT>=0?row[iT]:'', location=iL>=0?row[iL]:'';
+      const days={월:false,화:false,수:false,목:false,금:false};
+      const ON2=new Set(['●','O','ㅇ','o','◎','true','TRUE','1']);
+      ['월','화','수','목','금'].forEach(d=>{
+        if(dIdx[d]>=0) days[d]=ON2.has(row[dIdx[d]])||raw[dIdx[d]]===true;
+      });
+      result[bus][mode].push({name,phone,time,location,days});
+      parsedAny=true;
+    }
+  }
+
+  const total = Object.values(result).reduce((s,m)=>s+(m.등원||[]).length+(m.하원||[]).length,0);
+  return total > 0 ? result : null;
+}
+
+
+function applyUpload() {
+  if (!pendingUploadData) return;
+  DATA = pendingUploadData;
+  saveData();
+  updateStats();
+  render();
+  closeModal('uploadOverlay');
+  pendingUploadData = null;
+  toast('엑셀 데이터가 반영됐습니다 ✅', 'success');
+  addLog('upload','엑셀 파일로 전체 데이터 갱신');
+  addLog('upload', '엑셀 파일 업로드로 전체 데이터 갱신');
+}
+
+// ── 데이터 초기화 (원본 복원) ──
+function resetToInit() {
+  if (!confirm('모든 변경사항을 지우고 원본 데이터로 복원할까요?')) return;
+  localStorage.removeItem(LS_KEY);
+  DATA = JSON.parse(JSON.stringify(INIT_DATA));
+  updateStats(); render();
+  setSaveState(true);
+  toast('원본 데이터로 복원됐습니다', 'success');
+  addLog('upload', '원본 데이터로 초기화');
+}
+
+// ── 호차 동적 UI 빌드 ──
+function rebuildBusNav() {
+  const list = document.getElementById('busNavList');
+  if (!list) return;
+  const buses = Object.keys(DATA);
+  // 전체 버튼은 유지, 호차 버튼만 교체
+  const existing = [...list.querySelectorAll('[data-bus]:not([data-bus="all"])')];
+  existing.forEach(el => el.remove());
+
+  buses.forEach((bus, i) => {
+    const color = BUS_COLOR_PALETTE[i % BUS_COLOR_PALETTE.length].dot;
+    const div = document.createElement('div');
+    div.className = 'nav-item' + (activeBus === bus ? ' active' : '');
+    div.dataset.bus = bus;
+    const handler = (function(b, el) {
+      return function(e) { e.preventDefault(); selectBus(b, el); };
+    })(bus, div);
+    div.addEventListener('touchend', handler, {passive:false});
+    div.addEventListener('click', handler);
+    div.innerHTML = `<div class="nav-dot" style="background:${color}"></div>${bus}<span class="nav-count" id="cnt-${bus}">-</span>`;
+    list.appendChild(div);
+  });
+
+  // 호차 관리 버튼
+  let mgr = list.querySelector('.bus-mgr-row');
+  if (!mgr) {
+    mgr = document.createElement('div');
+    mgr.className = 'bus-mgr-row';
+    mgr.style.cssText = 'display:flex;gap:4px;margin-top:6px;padding:0 2px';
+    mgr.innerHTML = `
+      <button class="btn btn-secondary btn-sm" style="flex:1;font-size:11px" onclick="openAddBus()">＋ 호차 추가</button>
+      <button class="btn btn-secondary btn-sm" style="flex:1;font-size:11px;color:var(--red)" onclick="openDelBus()">－ 호차 삭제</button>`;
+    list.appendChild(mgr);
+  }
+  setTimeout(reinitTouchEvents, 50);
+}
+
+function rebuildBusSelect() {
+  const sel = document.getElementById('f_bus');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">선택</option>';
+  Object.keys(DATA).forEach(bus => {
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = bus;
+    sel.appendChild(opt);
+  });
+  if (cur) sel.value = cur;
+}
+
+// ── 호차 추가 ──
+function openAddBus() {
+  const name = prompt('추가할 호차 이름을 입력하세요\n예) 8호차');
+  if (!name) return;
+  const busName = name.trim();
+  if (!busName) return;
+  if (DATA[busName]) { toast(`${busName}은 이미 있습니다`, 'error'); return; }
+  DATA[busName] = { 등원: [], 하원: [] };
+  saveData();
+  updateStats();
+  render();
+  toast(`${busName}이 추가됐습니다 ✅`, 'success');
+}
+
+// ── 호차 삭제 ──
+function openDelBus() {
+  const buses = Object.keys(DATA);
+  if (buses.length === 0) { toast('삭제할 호차가 없습니다', 'error'); return; }
+  const list = buses.map((b,i) => `${i+1}. ${b} (${(DATA[b].등원||[]).length + (DATA[b].하원||[]).length}명)`).join('\n');
+  const input = prompt(`삭제할 호차 번호를 입력하세요:\n\n${list}`);
+  if (!input) return;
+  const idx = parseInt(input) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= buses.length) { toast('올바른 번호를 입력하세요', 'error'); return; }
+  const busName = buses[idx];
+  const total = (DATA[busName].등원||[]).length + (DATA[busName].하원||[]).length;
+  if (!confirm(`${busName} (${total}명 포함)을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+  delete DATA[busName];
+  if (activeBus === busName) activeBus = 'all';
+  saveData();
+  updateStats();
+  render();
+  toast(`${busName}이 삭제됐습니다`, 'success');
+}
+
+
+
+
+
+
+// ════════════════════════════════════════════════════════
+//  탭 전환
+// ════════════════════════════════════════════════════════
+
+
+// ── 통계 사이드 네비 ──
+function selectStatNav(key, el) {
+  if (key === 'bus') { setTimeout(renderDonutCharts, 50); }
+  document.querySelectorAll('[id^="snav-"]').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  ['bus','day','time','mode','cap'].forEach(k => {
+    const p = document.getElementById('spanel-' + k);
+    if (p) p.style.display = (k === key) ? 'block' : 'none';
+  });
+  renderStats();
+}
+// 통계 사이드 네비 터치 초기화
+function initStatNavTouch() {
+  document.querySelectorAll('[id^="snav-"]').forEach(el => {
+    const key = el.id.replace('snav-','');
+    const handler = function(e) { e.preventDefault(); selectStatNav(key, el); };
+    el.removeEventListener('touchend', el._statHandler);
+    el._statHandler = handler;
+    el.addEventListener('touchend', handler, {passive:false});
+    el.addEventListener('click', handler);
+  });
+}
+
+
+
+// ════════════════════════════════════════════════════════
+//  변경 이력
+// ════════════════════════════════════════════════════════
+const LOG_KEY='shuttleLogs_v1';
+function getLogs(){try{return JSON.parse(localStorage.getItem(LOG_KEY)||'[]');}catch{return[];}}
+function addLog(type,text){
+  const logs=getLogs();
+  const now=new Date();
+  const ts=`${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  logs.unshift({type,text,ts});if(logs.length>200)logs.splice(200);
+  localStorage.setItem(LOG_KEY,JSON.stringify(logs));
+}
+function renderLogs(){
+  const logs=getLogs();
+  const el=document.getElementById('logList');
+  const badge=document.getElementById('logCountBadge');
+  if(badge)badge.textContent=logs.length+'건';
+  if(!el)return;
+  const lbl={add:'추가',edit:'수정',del:'삭제',upload:'업로드',bus:'호차'};
+  el.innerHTML=logs.length?logs.map(l=>`<div class="log-item"><div class="log-dot log-${l.type}"></div><div class="log-time">${l.ts}</div><div class="log-text">[${lbl[l.type]||l.type}] ${l.text}</div></div>`).join(''):'<div class="log-empty">변경 이력이 없습니다</div>';
+}
+function clearLogs(){if(!confirm('변경 이력을 모두 삭제할까요?'))return;localStorage.removeItem(LOG_KEY);renderLogs();}
+
+// ════════════════════════════════════════════════════════
+//  메모 / 특이사항
+// ════════════════════════════════════════════════════════
+const MEMO_KEY='shuttleMemos_v1';
+let currentMemoKey=null;
+function getMemos(){try{return JSON.parse(localStorage.getItem(MEMO_KEY)||'{}');}catch{return{};}}
+function saveMemos(m){localStorage.setItem(MEMO_KEY,JSON.stringify(m));}
+function studentKey(bus,mode,idx){const s=DATA[bus]?.[mode]?.[idx];return s?`${bus}_${mode}_${s.phone||s.name}`:null;}
+function getMemoCell(bus,mode,idx,name){
+  const key=studentKey(bus,mode,idx);
+  const memos=getMemos();
+  const list=key?(memos[key]||[]):[];
+  const today=new Date().toISOString().slice(0,10);
+  const todayMemo=list.find(m=>m.date===today);
+  const safeName=name.replace(/'/g,"\'");
+  if(!list.length) return `<span class="memo-badge no-memo" onclick="openMemo('${bus}','${mode}',${idx},'${safeName}')">+ 메모</span>`;
+  const label=todayMemo?'⚠ '+todayMemo.text.slice(0,10):`📌 ${list.length}건`;
+  return `<span class="memo-badge has-memo" onclick="openMemo('${bus}','${mode}',${idx},'${safeName}')">${label}</span>`;
+}
+function openMemo(bus,mode,idx,name){
+  currentMemoKey=studentKey(bus,mode,idx);
+  document.getElementById('memoModalTitle').textContent=`📌 ${name} — 메모`;
+  document.getElementById('memoDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('memoText').value='';
+  renderMemoList();openModal('memoOverlay');
+}
+function renderMemoList(){
+  const memos=getMemos();
+  const list=currentMemoKey?(memos[currentMemoKey]||[]):[];
+  const el=document.getElementById('memoList');
+  if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">메모가 없습니다</div>';return;}
+  el.innerHTML=list.sort((a,b)=>b.date.localeCompare(a.date)).map((m,i)=>
+    `<div class="memo-item"><div class="memo-item-date">${m.date}</div><div class="memo-item-text">${m.text}</div><div class="memo-item-del" onclick="deleteMemo(${i})">✕</div></div>`).join('');
+}
+function addMemo(){
+  const date=document.getElementById('memoDate').value;
+  const text=document.getElementById('memoText').value.trim();
+  if(!text){toast('내용을 입력해 주세요','error');return;}
+  const memos=getMemos();
+  if(!memos[currentMemoKey])memos[currentMemoKey]=[];
+  memos[currentMemoKey].push({date,text});saveMemos(memos);
+  document.getElementById('memoText').value='';renderMemoList();render();
+  toast('메모가 추가됐습니다','success');
+}
+function deleteMemo(idx){
+  const memos=getMemos();const list=memos[currentMemoKey]||[];
+  list.sort((a,b)=>b.date.localeCompare(a.date)).splice(idx,1);
+  memos[currentMemoKey]=list;saveMemos(memos);renderMemoList();render();
+}
+
+// ════════════════════════════════════════════════════════
+//  당일 체크리스트
+// ════════════════════════════════════════════════════════
+const CHECK_KEY='shuttleChecks_v2';
+const _dayIdx = new Date().getDay(); let checkDay = ['일','월','화','수','목','금','토'][_dayIdx]; if(!['월','화','수','목','금'].includes(checkDay)) checkDay='월';
+
+function checkKey(bus, mode, phone, name) {
+  return bus + '_' + mode + '_' + (phone || name);
+}
+
+// 오늘 날짜 키
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// 오늘 날짜 기준으로만 체크 저장/불러오기
+function getChecks() {
+  try {
+    const all = JSON.parse(localStorage.getItem(CHECK_KEY)||'{}');
+    return all[todayKey()] || {};
+  } catch { return {}; }
+}
+function saveChecks(c) {
+  try {
+    const all = JSON.parse(localStorage.getItem(CHECK_KEY)||'{}');
+    all[todayKey()] = c;
+    // 7일 이전 데이터 자동 삭제
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
+    Object.keys(all).forEach(k => { if(new Date(k) < cutoff) delete all[k]; });
+    localStorage.setItem(CHECK_KEY, JSON.stringify(all));
+  } catch {}
+}
+function buildDaySelector(){
+  const days=['월','화','수','목','금'];
+  const sel=document.getElementById('daySelector');
+  if(!sel)return;
+  sel.innerHTML=days.map(d=>`<button class="day-sel-btn${d===checkDay?' active':''}" onclick="setCheckDay('${d}',this)">${d}</button>`).join('');
+}
+function setCheckDay(day,el){
+  checkDay=day;
+  document.querySelectorAll('.day-sel-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');buildChecklist();
+}
+function buildCheckBusSelect(){
+  const sel=document.getElementById('checkBusFilter');if(!sel)return;
+  const cur=sel.value;sel.innerHTML='<option value="all">전체 호차</option>';
+  Object.keys(DATA).forEach(b=>{const o=document.createElement('option');o.value=o.textContent=b;sel.appendChild(o);});
+  sel.value=cur;
+}
+function buildChecklist(){
+  buildCheckBusSelect();
+  const busF=document.getElementById('checkBusFilter')?.value||'all';
+  const modeF=document.getElementById('checkModeFilter')?.value||'all';
+  const checks=getChecks();const memos=getMemos();
+  const today=new Date().toISOString().slice(0,10);
+  const area=document.getElementById('checklistArea');if(!area)return;
+  const groups={};
+  for(const[bus,modes]of Object.entries(DATA)){
+    if(busF!=='all'&&bus!==busF)continue;
+    for(const[mode,students]of Object.entries(modes)){
+      if(modeF!=='all'&&mode!==modeF)continue;
+      for(let idx=0;idx<students.length;idx++){
+        const s=students[idx];if(!s.days[checkDay])continue;
+        const timeKey=s.time||'시간 미정';
+        const gk=`${timeKey}__${mode}`;
+        if(!groups[gk])groups[gk]={time:timeKey,mode,items:[]};
+        const ck=`${bus}_${mode}_${s.phone||s.name}`;
+        const memoKey=studentKey(bus,mode,idx);
+        const memoList=memos[memoKey]||[];
+        const todayMemo=memoList.find(m=>m.date===today);
+        groups[gk].items.push({bus,mode,idx,s,ck,isChecked:!!checks[ck],todayMemo});
+      }
+    }
+  }
+  const sg=Object.values(groups).sort((a,b)=>{
+    const ta=a.time.replace(':','').padStart(4,'0');const tb=b.time.replace(':','').padStart(4,'0');
+    return ta.localeCompare(tb)||a.mode.localeCompare(b.mode);
+  });
+  if(!sg.length){area.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><div>${checkDay}요일 탑승 학생이 없습니다</div></div>`;return;}
+  const modeIcon={등원:'🔵',하원:'🔴'};
+  area.innerHTML=sg.map(g=>{
+    const done=g.items.filter(i=>i.isChecked).length;
+    const pct=g.items.length?Math.round(done/g.items.length*100):0;
+    const rows=g.items.map(item=>`
+      <div class="check-row${item.isChecked?' checked':''}${item.todayMemo?' check-absent':''}" data-ck="${item.ck}" onclick="toggleCheck('${item.ck}')">
+        <div class="check-box">${item.isChecked?'✓':''}</div>
+        <div class="check-name">${item.s.name}${item.todayMemo?`<span class="absent-badge">⚠ ${item.todayMemo.text.slice(0,8)}</span>`:''}
+          <div style="font-size:11px;color:var(--text3);font-weight:normal">${item.bus} · ${item.s.location||'장소 미정'}</div>
+        </div>
+        <div class="check-meta" style="font-size:11px;color:var(--text3)">${item.s.phone||''}</div>
+      </div>`).join('');
+    return `<div class="check-card">
+      <div class="check-card-head">
+        <div class="check-card-title">${modeIcon[g.mode]||''} ${g.mode} · ${g.time}</div>
+        <div class="check-progress">${done}/${g.items.length}명 체크</div>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+      ${rows}
+      <div class="check-summary">
+        <span class="summary-chip s-total">전체 ${g.items.length}명</span>
+        <span class="summary-chip s-done">탑승 ${done}명</span>
+        <span class="summary-chip s-remain">미확인 ${g.items.length-done}명</span>
+        ${g.items.filter(i=>i.todayMemo).length?`<span class="summary-chip s-absent">특이사항 ${g.items.filter(i=>i.todayMemo).length}명</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleCheck(ck){
+  const checks = getChecks();
+  haptic(checks[ck] ? 15 : 40);
+  checks[ck] = !checks[ck];
+  if (!checks[ck]) delete checks[ck];
+  saveChecks(checks);
+  buildChecklist();
+}
+
+// 체크리스트 터치 이벤트 등록
+function attachCheckRowEvents() {
+  document.querySelectorAll('.check-row[data-ck]').forEach(row => {
+    if (row._ckBound) return;
+    row._ckBound = true;
+    const ck = row.dataset.ck;
+    let _moved = false;
+    row.addEventListener('touchstart', () => { _moved = false; }, {passive:true});
+    row.addEventListener('touchmove', () => { _moved = true; }, {passive:true});
+    row.addEventListener('touchend', (e) => {
+      if (!_moved) { e.preventDefault(); toggleCheck(ck); }
+    }, {passive:false});
+  });
+}
+function resetAllChecks(){if(!confirm('모든 체크를 초기화할까요?'))return;localStorage.removeItem(CHECK_KEY);buildChecklist();toast('체크가 초기화됐습니다','success');}
+function printChecklist(){
+  const area=document.getElementById('checklistArea');if(!area)return;
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>탑승 체크리스트</title>
+  <style>body{font-family:sans-serif;padding:16px;font-size:12px}h2{font-size:16px}
+  .check-card{border:1px solid #ccc;border-radius:6px;margin-bottom:12px;overflow:hidden}
+  .check-card-head{background:#f0f0f0;padding:6px 10px;font-weight:600}
+  .check-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-top:1px solid #eee}
+  .check-box{width:14px;height:14px;border:1.5px solid #999;border-radius:3px;flex-shrink:0}
+  .check-name{flex:1}.check-meta{font-size:11px;color:#666}
+  .check-summary{background:#f9f9f9;padding:5px 10px;font-size:11px;display:flex;gap:8px}
+  .progress-bar-wrap,.absent-badge{display:none}</style></head><body>
+  <h2>탑승 체크리스트 — ${checkDay}요일</h2><p>출력: ${new Date().toLocaleString('ko')}</p>
+  ${area.innerHTML}</body></html>`);
+  w.document.close();setTimeout(()=>w.print(),300);
+}
+
+// ════════════════════════════════════════════════════════
+//  문자 발송
+// ════════════════════════════════════════════════════════
+const TMPL_KEY='shuttleTemplates_v1';
+const DEFAULT_TEMPLATES=['셔틀버스가 곧 출발합니다. 준비해 주세요.','오늘 셔틀버스 운행이 지연되고 있습니다. 잠시 기다려 주세요.','오늘 셔틀버스 운행이 결행됩니다. 개별 등하원 부탁드립니다.','탑승 장소가 임시 변경되었습니다. 공지 확인 부탁드립니다.'];
+function getTemplates(){try{const s=JSON.parse(localStorage.getItem(TMPL_KEY)||'null');return s||DEFAULT_TEMPLATES;}catch{return DEFAULT_TEMPLATES;}}
+function saveTemplates(t){localStorage.setItem(TMPL_KEY,JSON.stringify(t));}
+function rebuildSmsSelects(){
+  const sel=document.getElementById('smsBus');if(!sel)return;
+  const cur=sel.value;sel.innerHTML='<option value="all">전체 호차</option>';
+  Object.keys(DATA).forEach(b=>{const o=document.createElement('option');o.value=o.textContent=b;sel.appendChild(o);});
+  sel.value=cur;
+}
+function buildSmsNumbers(){
+  const bus=document.getElementById('smsBus')?.value||'all';
+  const mode=document.getElementById('smsMode')?.value||'all';
+  const time=document.getElementById('smsTime')?.value||'all';
+  const seen=new Set();const nums=[];
+  for(const[b,modes]of Object.entries(DATA)){
+    if(bus!=='all'&&b!==bus)continue;
+    for(const[m,students]of Object.entries(modes)){
+      if(mode!=='all'&&m!==mode)continue;
+      for(const s of students){
+        if(time!=='all'&&s.time!==time)continue;
+        const ph=(s.phone||'').replace(/[^0-9]/g,'');
+        if(ph.length>=10&&!seen.has(ph)){seen.add(ph);nums.push(s.phone);}
+      }
+    }
+  }
+  const box=document.getElementById('smsNumberBox');
+  const label=document.getElementById('smsCountLabel');
+  if(box)box.textContent=nums.length?nums.join(', '):'해당 조건의 번호가 없습니다';
+  if(label)label.textContent=`총 ${nums.length}명의 번호 (중복 제거)`;
+}
+function copySmsNumbers(){
+  const text=document.getElementById('smsNumberBox')?.textContent||'';
+  if(!text||text==='—'){toast('번호가 없습니다','error');return;}
+  navigator.clipboard.writeText(text).then(()=>{toast('번호가 복사됐습니다 📋','success');showCopyToast('번호 '+nums.length+'개 복사됨')})
+    .catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('복사됐습니다','success');});
+}
+function openSmsApp(){
+  const text=document.getElementById('smsNumberBox')?.textContent||'';
+  if(!text||text==='—'){toast('번호가 없습니다','error');return;}
+  const nums=text.split(',').map(s=>s.trim()).filter(Boolean);
+  window.location.href=`sms:${nums.join(',')}`;
+}
+function buildSmsTemplates(){
+  const list=document.getElementById('smsTemplateList');if(!list)return;
+  const tmpls=getTemplates();
+  list.innerHTML=tmpls.map((t,i)=>`<div class="sms-template-item">
+    <div class="sms-template-text">${t}</div>
+    <span class="sms-copy-btn" onclick="copyTemplate(${i})">복사</span>
+    <span style="color:var(--text3);cursor:pointer;padding:2px 6px" onclick="deleteTemplate(${i})">✕</span>
+  </div>`).join('');
+}
+function copyTemplate(idx){const t=getTemplates()[idx];navigator.clipboard.writeText(t).then(()=>{toast('복사됐습니다 📋','success');showCopyToast('템플릿 복사됨')}).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('복사됐습니다','success');showCopyToast('템플릿 복사됨')});}
+function deleteTemplate(idx){const t=getTemplates();t.splice(idx,1);saveTemplates(t);buildSmsTemplates();}
+function addSmsTemplate(){
+  const inp=document.getElementById('newTemplateInput');
+  const text=inp?.value.trim();if(!text){toast('내용을 입력해 주세요','error');return;}
+  const t=getTemplates();t.push(text);saveTemplates(t);inp.value='';buildSmsTemplates();toast('템플릿이 추가됐습니다','success');
+}
+
+// ════════════════════════════════════════════════════════
+//  통계
+// ════════════════════════════════════════════════════════
+const CAP_KEY='shuttleCapacity_v2';
+function getCapacity(){try{return JSON.parse(localStorage.getItem(CAP_KEY)||'{}');}catch{return{};}}
+function saveCapacityData(c){localStorage.setItem(CAP_KEY,JSON.stringify(c));}
+function openCapacity(){
+  const cap=getCapacity();const form=document.getElementById('capacityForm');if(!form)return;
+  form.innerHTML=Object.keys(DATA).map(bus=>{
+    const dong=(DATA[bus]?.등원||[]).length;const ha=(DATA[bus]?.하원||[]).length;
+    const cd=(cap[bus]?.등원)||'';const ch=(cap[bus]?.하원)||'';
+    const esc=CSS.escape(bus);
+    return `<div style="display:grid;grid-template-columns:72px 1fr 1fr;gap:6px;align-items:center">
+      <span style="font-size:13px;font-weight:500">${bus}</span>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input type="number" id="cap_d_${esc}" value="${cd}" min="0" max="200" placeholder="미설정"
+          style="width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;outline:none;border-left:3px solid #059669">
+        <span style="font-size:11px;color:var(--text3);white-space:nowrap">${dong}명</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input type="number" id="cap_h_${esc}" value="${ch}" min="0" max="200" placeholder="미설정"
+          style="width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;outline:none;border-left:3px solid #DC2626">
+        <span style="font-size:11px;color:var(--text3);white-space:nowrap">${ha}명</span>
+      </div>
+    </div>`;}).join('');
+  openModal('capacityOverlay');
+}
+function saveCapacity(){
+  const cap={};
+  Object.keys(DATA).forEach(bus=>{
+    const esc=CSS.escape(bus);
+    const d=parseInt(document.getElementById('cap_d_'+esc)?.value||'0');
+    const h=parseInt(document.getElementById('cap_h_'+esc)?.value||'0');
+    if(d>0||h>0) cap[bus]={등원:d||0,하원:h||0};
+  });
+  saveCapacityData(cap);closeModal('capacityOverlay');renderStats();toast('정원이 저장됐습니다 ✅','success');
+}
+
+// 드릴다운 명단 팝업
+function showDrill(title,rows){
+  document.getElementById('drillTitle').textContent=title;
+  document.getElementById('drillCount').textContent='총 '+rows.length+'명';
+  const BC={'1호차':'#DBEAFE','2호차':'#DCFCE7','3호차':'#FEF3C7','5호차':'#FCE7F3','6호차':'#EDE9FE','7호차':'#FFEDD5'};
+  if(!rows.length){document.getElementById('drillContent').innerHTML='<div style="text-align:center;padding:32px;color:var(--text3)">해당 인원이 없습니다</div>';openModal('drillOverlay');return;}
+  document.getElementById('drillContent').innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:var(--surface2)">
+      <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text3)">이름</th>
+      <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text3)">호차</th>
+      <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text3)">구분</th>
+      <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text3)">시간</th>
+      <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text3)">장소</th>
+    </tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr style="background:${i%2?'var(--surface2)':'var(--surface)'}">
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border);font-weight:500">${r.name}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border)"><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:${BC[r.bus]||'#F3F4F6'}">${r.bus}</span></td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border)"><span style="font-size:11px;padding:2px 7px;border-radius:20px;background:${r.mode==='등원'?'#DCFCE7':'#FEE2E2'};color:${r.mode==='등원'?'#166534':'#991B1B'}">${r.mode}</span></td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px">${r.time||'—'}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.location||''}">${r.location||'—'}</td>
+    </tr>`).join('')}</tbody></table>`;
+  openModal('drillOverlay');
+}
+
+function barHtml(label,val,max,color,sub,onclick){
+  const pct=max>0?Math.min(100,Math.round(val/max*100)):0;
+  const ca=onclick?`onclick="${onclick}" style="cursor:pointer" title="클릭하면 명단 보기"`:'' ;
+  return `<div class="bar-row" ${ca}><div class="bar-label">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color||'#2563EB'}">${val>0?val:''}</div></div><div class="bar-num">${val}${sub||''}</div></div>`;
+}
+
+
+// ════════════════════════════════════════════════════
+//  도넛 차트 (SVG 기반)
+// ════════════════════════════════════════════════════
+const DONUT_COLORS = [
+  {dong:'#1428A0', ha:'#3B82F6', bg:'#EFF6FF'},
+  {dong:'#059669', ha:'#34D399', bg:'#F0FDF4'},
+  {dong:'#D97706', ha:'#FBBF24', bg:'#FFFBEB'},
+  {dong:'#DB2777', ha:'#F472B6', bg:'#FDF2F8'},
+  {dong:'#7C3AED', ha:'#A78BFA', bg:'#F5F3FF'},
+  {dong:'#EA580C', ha:'#FB923C', bg:'#FFF7ED'},
+  {dong:'#0891B2', ha:'#67E8F9', bg:'#ECFEFF'},
+  {dong:'#65A30D', ha:'#A3E635', bg:'#F7FEE7'},
+];
+
+function drawDonut(canvasId, dong, ha, colors) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = 110, H = 110;
+  canvas.width = W * 2; canvas.height = H * 2;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(2, 2);
+
+  const cx = W/2, cy = H/2, r = 44, ir = 30;
+  const total = dong + ha;
+  ctx.clearRect(0, 0, W, H);
+
+  if (total === 0) {
+    // 빈 원
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.strokeStyle = '#E5E7EB';
+    ctx.lineWidth = r - ir;
+    ctx.stroke();
+    return;
+  }
+
+  const segments = [
+    {val: dong, color: colors.dong, label:'등원'},
+    {val: ha,   color: colors.ha,   label:'하원'},
+  ].filter(s => s.val > 0);
+
+  let startAngle = -Math.PI / 2;
+  const gap = total > 1 && dong > 0 && ha > 0 ? 0.04 : 0;
+
+  segments.forEach((seg, i) => {
+    const angle = (seg.val / total) * Math.PI * 2 - gap;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle + gap/2, startAngle + angle + gap/2);
+    ctx.arc(cx, cy, ir, startAngle + angle + gap/2, startAngle + gap/2, true);
+    ctx.closePath();
+    ctx.fillStyle = seg.color;
+
+    // 그림자 효과
+    ctx.shadowColor = seg.color + '55';
+    ctx.shadowBlur = 4;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    startAngle += angle + gap;
+  });
+
+  // 안쪽 흰 원 (도넛 구멍)
+  ctx.beginPath();
+  ctx.arc(cx, cy, ir - 1, 0, Math.PI*2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+}
+
+function renderDonutCharts() {
+  const wrap = document.getElementById('donutWrap');
+  if (!wrap) return;
+  const buses = Object.keys(DATA);
+
+  wrap.innerHTML = buses.map((bus, i) => {
+    const dong = (DATA[bus]?.등원||[]).length;
+    const ha   = (DATA[bus]?.하원||[]).length;
+    const total = dong + ha;
+    const cid = 'donut_' + bus.replace(/[^a-z0-9]/gi,'_');
+    const col = DONUT_COLORS[i % DONUT_COLORS.length];
+
+    return `<div class="donut-item" onclick="showDrill('${bus} 전체 명단',flatRows().filter(r=>r.bus==='${bus}'))">
+      <div class="donut-canvas-wrap">
+        <canvas id="${cid}"></canvas>
+        <div class="donut-center">
+          <div class="donut-total">${total}</div>
+          <div class="donut-label">명</div>
+        </div>
+      </div>
+      <div class="donut-name">${bus}</div>
+      <div class="donut-legend">
+        <div class="donut-leg" onclick="event.stopPropagation();showDrill('${bus} 등원 명단',flatRows().filter(r=>r.bus==='${bus}'&&r.mode==='등원'))">
+          <div class="donut-leg-dot" style="background:${col.dong}"></div>
+          <span style="color:${col.dong}">등원 ${dong}</span>
+        </div>
+        <div class="donut-leg" onclick="event.stopPropagation();showDrill('${bus} 하원 명단',flatRows().filter(r=>r.bus==='${bus}'&&r.mode==='하원'))">
+          <div class="donut-leg-dot" style="background:${col.ha}"></div>
+          <span style="color:${col.ha}">하원 ${ha}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 캔버스 그리기 (DOM 업데이트 후)
+  requestAnimationFrame(() => {
+    buses.forEach((bus, i) => {
+      const dong = (DATA[bus]?.등원||[]).length;
+      const ha   = (DATA[bus]?.하원||[]).length;
+      const cid = 'donut_' + bus.replace(/[^a-z0-9]/gi,'_');
+      drawDonut(cid, dong, ha, DONUT_COLORS[i % DONUT_COLORS.length]);
+    });
+  });
+}
+
+function renderStats(){
+  const all=flatRows();const cap=getCapacity();
+  // 호차별 도넛 차트
+  renderDonutCharts();
+  // 시간대별
+  const timeEl=document.getElementById('timeBarChart');
+  if(timeEl){
+    const times={};all.forEach(r=>{const t=r.time||'미정';times[t]=(times[t]||0)+1;});
+    const sorted=Object.entries(times).sort((a,b)=>a[0].localeCompare(b[0]));
+    const maxT=Math.max(...sorted.map(e=>e[1]),1);
+    const colors=['#2563EB','#059669','#D97706','#7C3AED','#EA580C','#0891B2'];
+    timeEl.innerHTML=sorted.map(([t,n],i)=>{
+      const safe=t.replace(/'/g,"\'");
+      return barHtml(t,n,maxT,colors[i%colors.length],'',`showDrill('${safe} 탑승 명단',flatRows().filter(r=>(r.time||'미정')==='${safe}'))`);
+    }).join('');
+  }
+  // 요일별
+  const dayEl=document.getElementById('dayBarChart');
+  if(dayEl){
+    const days=['월','화','수','목','금'];
+    const dongCounts={};const haCounts={};
+    days.forEach(d=>{
+      dongCounts[d]=all.filter(r=>r.days[d]&&r.mode==='등원').length;
+      haCounts[d]=all.filter(r=>r.days[d]&&r.mode==='하원').length;
+    });
+    const maxD=Math.max(...days.map(d=>Math.max(dongCounts[d],haCounts[d])),1);
+    dayEl.innerHTML=days.map(d=>`
+      <div style="margin-bottom:8px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);padding:4px 8px;background:var(--surface2)">${d}요일 — 등원${dongCounts[d]}명 / 하원${haCounts[d]}명</div>
+        ${barHtml('등원',dongCounts[d],maxD,'#059669','',`showDrill('${d}요일 등원 명단',flatRows().filter(r=>r.days['${d}']&&r.mode==='등원'))`)}
+        ${barHtml('하원',haCounts[d],maxD,'#DC2626','',`showDrill('${d}요일 하원 명단',flatRows().filter(r=>r.days['${d}']&&r.mode==='하원'))`)}</div>`
+    ).join('');
+  }
+  // 등원/하원 비율
+  const modeEl=document.getElementById('modeChart');
+  if(modeEl){
+    const dong=all.filter(r=>r.mode==='등원').length;
+    const ha=all.filter(r=>r.mode==='하원').length;
+    const total=dong+ha||1;const dp=Math.round(dong/total*100);
+    modeEl.innerHTML=`<div style="flex:1">
+      <div style="height:24px;border-radius:6px;overflow:hidden;display:flex;margin-bottom:10px">
+        <div style="width:${dp}%;background:#059669;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;transition:width .4s;cursor:pointer"
+          onclick="showDrill('등원 전체 명단',flatRows().filter(r=>r.mode==='등원'))">${dp>12?dp+'%':''}</div>
+        <div style="flex:1;background:#DC2626;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;cursor:pointer"
+          onclick="showDrill('하원 전체 명단',flatRows().filter(r=>r.mode==='하원'))">${(100-dp)>12?(100-dp)+'%':''}</div>
+      </div>
+      <div style="display:flex;gap:12px;font-size:12px">
+        <span style="cursor:pointer" onclick="showDrill('등원 전체 명단',flatRows().filter(r=>r.mode==='등원'))"><span style="color:#059669;font-weight:600">●</span> 등원 ${dong}명 (${dp}%)</span>
+        <span style="cursor:pointer" onclick="showDrill('하원 전체 명단',flatRows().filter(r=>r.mode==='하원'))"><span style="color:#DC2626;font-weight:600">●</span> 하원 ${ha}명 (${100-dp}%)</span>
+      </div></div>`;
+  }
+  // 정원 현황 - 등원/하원 각각
+  const capEl=document.getElementById('capacityChart');
+  if(capEl){
+    const buses=Object.keys(DATA);
+    if(!buses.some(b=>cap[b])){
+      capEl.innerHTML=`<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">정원이 설정되지 않았습니다.<br><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="openCapacity()">정원 설정</button></div>`;
+    } else {
+      capEl.innerHTML=buses.map(bus=>{
+        const c=cap[bus];if(!c)return'';
+        const dong=(DATA[bus]?.등원||[]).length;
+        const ha=(DATA[bus]?.하원||[]).length;
+        const cd=c.등원||0;const ch=c.하원||0;
+        const mkBar=(label,n,cp,mode)=>{
+          if(!cp)return'';
+          const pct=Math.min(100,Math.round(n/cp*100));
+          const color=pct>=100?'#DC2626':pct>=80?'#D97706':'#059669';
+          const badge=pct>=100?'⚠초과':pct>=80?'주의':'여유';
+          const oc=`showDrill('${bus} ${mode} 명단',flatRows().filter(r=>r.bus==='${bus}'&&r.mode==='${mode}'))`;
+          return `<div class="bar-row" onclick="${oc}" style="cursor:pointer" title="클릭하면 명단 보기">
+            <div class="bar-label" style="font-size:10px">${label}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}">${n>0?n:''}</div></div>
+            <div class="bar-num" style="font-size:11px">${n}/${cp} <span style="font-size:10px;color:${color}">${badge}</span></div>
+          </div>`;
+        };
+        return `<div style="margin-bottom:8px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:600;color:var(--text2);padding:4px 8px;background:var(--surface2)">${bus}</div>
+          ${mkBar('🔵등원',dong,cd,'등원')}
+          ${mkBar('🔴하원',ha,ch,'하원')}
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+
+
+// ══════════════════════════════════════════════════════
+//  실시간 탑승 현황 대시보드
+// ══════════════════════════════════════════════════════
+
+const WEEK_KO = ['일','월','화','수','목','금','토'];
+const BUS_PALETTE = [
+  {bar:'#1428A0', badge:'#bd'},
+  {bar:'#059669', badge:'#gd'},
+  {bar:'#7C3AED', badge:'#pd'},
+  {bar:'#D97706', badge:'#od'},
+  {bar:'#DC2626', badge:'#rd'},
+  {bar:'#0891B2', badge:'#0891B2'},
+  {bar:'#DB2777', badge:'#DB2777'},
+  {bar:'#65A30D', badge:'#65A30D'},
+];
+
+let dashTimer = null;
+
+
+// ══ 터치 이벤트 통합 초기화 ══
+function addTouchHandler(el, fn) {
+  if (!el) return;
+  let touchMoved = false;
+  el.addEventListener('touchstart', () => { touchMoved = false; }, {passive:true});
+  el.addEventListener('touchmove', () => { touchMoved = true; }, {passive:true});
+  el.addEventListener('touchend', function(e) {
+    if (!touchMoved) { e.preventDefault(); fn.call(this, e); }
+  }, {passive:false});
+  el.addEventListener('click', fn);
+}
+
+
+
+
+
+
+// ══ PC/모바일 레이아웃 전환 ══
+function applyPCLayout() {
+  const isPC = window.innerWidth >= 768;
+  const drawer = document.getElementById('sidebar-drawer');
+  const content = document.getElementById('content');
+  const app = document.getElementById('app');
+  if (!drawer || !content || !app) return;
+
+  if (isPC) {
+    if (!document.getElementById('pc-sidebar-wrap')) {
+      const wrap = document.createElement('div');
+      wrap.id = 'pc-sidebar-wrap';
+      wrap.style.cssText = 'display:flex;flex:1;overflow:hidden;position:relative;min-height:0';
+      // app에서 content 제거 후 wrap에 삽입
+      if (content.parentNode === app) app.removeChild(content);
+      if (drawer.parentNode !== wrap) wrap.appendChild(drawer);
+      wrap.appendChild(content);
+      app.appendChild(wrap);
+    }
+    // overlay 닫기
+    const ov = document.getElementById('sidebar-overlay');
+    if (ov) { ov.classList.remove('open'); ov.style.display='none'; }
+    document.body.style.overflow = '';
+  } else {
+    const wrap = document.getElementById('pc-sidebar-wrap');
+    if (wrap) {
+      if (content.parentNode === wrap) app.appendChild(content);
+      if (drawer.parentNode === wrap) document.body.appendChild(drawer);
+      wrap.remove();
+    }
+  }
+}
+
+// 초기 + 리사이즈 대응
+applyPCLayout();
+window.addEventListener('resize', () => {
+  applyPCLayout();
+  // PC에서 체크완료 폰트 크기 맞춤
+  const el = document.getElementById('db-checked');
+  if (el) el.style.fontSize = window.innerWidth >= 768 ? '28px' : '20px';
+});
+// 초기에도 적용
+(function(){
+  const el = document.getElementById('db-checked');
+  if (el) el.style.fontSize = window.innerWidth >= 768 ? '28px' : '20px';
+})();
+
+function initDashboard() {
+  updateDashboard();
+  // 1초마다 시계 업데이트
+  if (dashTimer) clearInterval(dashTimer);
+  dashTimer = setInterval(() => {
+    updateClock();
+  }, 1000);
+}
+
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const el = document.getElementById('db-clock');
+  if (el) el.textContent = h + ':' + m;
+}
+
+function updateDashboard() {
+  const now = new Date();
+  const todayIdx = now.getDay(); // 0=일,1=월...
+  let todayKo = WEEK_KO[todayIdx];
+  if(!['월','화','수','목','금'].includes(todayKo)) todayKo = '금'; // 주말이면 금요일 표시
+  const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+
+  // 날짜 표시
+  const dayEl = document.getElementById('db-day');
+  const dateEl = document.getElementById('db-date-str');
+  if (dayEl) dayEl.textContent = todayKo + '요일';
+  if (dateEl) dateEl.textContent = dateStr;
+  updateClock();
+
+  // 전체 학생 (중복 제거)
+  const allRows = flatRows();
+  const uniqueAll = uniqueCount(allRows);
+
+  // 오늘 탑승 예정 학생
+  const todayRows = allRows.filter(r => r.days && r.days[todayKo]);
+  const uniqueToday = uniqueCount(todayRows);
+
+  // 체크 완료
+  const checks = getChecks();
+  const checkedCount = Object.values(checks).filter(Boolean).length;
+  const totalCheckable = todayRows.length;
+
+  // 통계 카드 업데이트
+  const totalEl = document.getElementById('db-total');
+  const todayEl = document.getElementById('db-today-total');
+  if (totalEl) { animateNumber(totalEl, parseInt(totalEl.dataset.prev||0), uniqueAll); totalEl.dataset.prev = uniqueAll; }
+  if (todayEl) { animateNumber(todayEl, parseInt(todayEl.dataset.prev||0), uniqueToday); todayEl.dataset.prev = uniqueToday; }
+  const checkedEl = document.getElementById('db-checked');
+  if (checkedEl) checkedEl.textContent = checkedCount + '/' + totalCheckable;
+
+  // 다음 출발 시간 계산
+  updateNextDepart(now, todayKo);
+
+  // 호차별 현황
+  updateBusGrid(todayKo, checks);
+  updateDbDonuts(todayKo);
+  setTimeout(reinitTouchEvents, 80);
+}
+
+function animateNumber(el, from, to) {
+  if (from === to) { el.childNodes[0] && (el.textContent = to); el.textContent = to; return; }
+  const step = (to - from) / 12;
+  let cur = from;
+  const tick = setInterval(() => {
+    cur += step;
+    if ((step > 0 && cur >= to) || (step < 0 && cur <= to)) {
+      clearInterval(tick);
+      el.textContent = to;
+    } else {
+      el.textContent = Math.round(cur);
+    }
+  }, 30);
+}
+
+function updateNextDepart(now, todayKo) {
+  const card = document.getElementById('nextDepartCard');
+  if (!card) return;
+
+  // 오늘 탑승 학생의 시간대 목록
+  const allRows = flatRows();
+  const todayTimes = {};
+  allRows.forEach(r => {
+    if (r.days && r.days[todayKo] && r.time) {
+      if (!todayTimes[r.time]) todayTimes[r.time] = 0;
+      todayTimes[r.time]++;
+    }
+  });
+
+  if (!Object.keys(todayTimes).length) { card.style.display = 'none'; return; }
+
+  // 현재 시각 이후의 가장 가까운 출발 시간 찾기
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const future = Object.entries(todayTimes)
+    .map(([t, n]) => {
+      const [h, m] = t.split(':').map(Number);
+      return { time: t, min: h * 60 + m, count: n };
+    })
+    .filter(e => e.min > nowMin)
+    .sort((a, b) => a.min - b.min);
+
+  if (!future.length) { card.style.display = 'none'; return; }
+
+  const next = future[0];
+  const diff = next.min - nowMin;
+  const diffStr = diff >= 60
+    ? `${Math.floor(diff/60)}시간 ${diff%60}분 후`
+    : `${diff}분 후`;
+
+  card.style.display = 'flex';
+  const timeEl = document.getElementById('ndc-time');
+  const subEl  = document.getElementById('ndc-sub');
+  const cntEl  = document.getElementById('ndc-count');
+  if (timeEl) timeEl.textContent = next.time;
+  if (subEl)  subEl.textContent = `출발 ${diffStr}`;
+  if (cntEl)  cntEl.textContent = next.count;
+}
+
+
+
+// ════════════════════════════════════════════
+//  대시보드 도넛 차트 (3종 애니메이션)
+// ════════════════════════════════════════════
+const DB_DONUT_COLORS = [
+  {arc:'#60A5FA', bg:'rgba(96,165,250,.25)', text:'#93C5FD'},
+  {arc:'#34D399', bg:'rgba(52,211,153,.25)', text:'#6EE7B7'},
+  {arc:'#FBBF24', bg:'rgba(251,191,36,.25)', text:'#FDE68A'},
+  {arc:'#F472B6', bg:'rgba(244,114,182,.25)',text:'#FBCFE8'},
+  {arc:'#A78BFA', bg:'rgba(167,139,250,.25)',text:'#DDD6FE'},
+  {arc:'#FB923C', bg:'rgba(251,146,60,.25)', text:'#FED7AA'},
+  {arc:'#67E8F9', bg:'rgba(103,232,249,.25)',text:'#A5F3FC'},
+  {arc:'#86EFAC', bg:'rgba(134,239,172,.25)',text:'#BBF7D0'},
+];
+
+// ── 이징 함수 ──
+function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+function easeOutElastic(t){
+  const c4=(2*Math.PI)/3;
+  return t===0?0:t===1?1:Math.pow(2,-10*t)*Math.sin((t*10-0.75)*c4)+1;
+}
+
+const _donutAnims = {};
+
+// ── 프레임 1장 그리기 ──
+function drawDbDonutFrame(canvas, dong, ha, col, progress, rotation) {
+  if (!canvas) return;
+  const S = 120;
+  const isPC2 = window.innerWidth >= 768;
+  const dispSize = isPC2 ? '90px' : '60px';
+  if (canvas.width !== S) { canvas.width = S; canvas.height = S; }
+  canvas.style.width = dispSize; canvas.style.height = dispSize;
+  const ctx = canvas.getContext('2d');
+  const cx=S/2, cy=S/2, R=52, r=34;
+  ctx.clearRect(0,0,S,S);
+  const total = dong + ha;
+
+  // 배경 트랙
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.arc(cx,cy,r,0,Math.PI*2,true);
+  ctx.fillStyle='rgba(255,255,255,.1)'; ctx.fill('evenodd'); ctx.restore();
+
+  if (total===0) return;
+
+  const gap = dong>0&&ha>0 ? 0.08 : 0;
+  const base = -Math.PI/2 + rotation;  // 회전 적용
+  const maxAngle = Math.PI*2*progress; // 채워지기 진행도
+
+  const drawSeg = (start, end, color, glow) => {
+    if (end<=start+0.01) return;
+    const p = new Path2D();
+    p.arc(cx,cy,R,start,end); p.arc(cx,cy,r,end,start,true); p.closePath();
+    ctx.save(); ctx.shadowColor=glow; ctx.shadowBlur=8*progress;
+    ctx.fillStyle=color; ctx.fill(p); ctx.restore();
+  };
+
+  // 등원
+  if (dong>0) {
+    const a = Math.min(dong/total*Math.PI*2-(ha>0?gap:0), maxAngle);
+    if (a>0) drawSeg(base+gap/2, base+a+gap/2, col.arc, col.arc);
+  }
+  // 하원
+  if (ha>0) {
+    const dOff = dong>0 ? dong/total*Math.PI*2 : 0;
+    const hS = base+dOff+(dong>0?gap/2:0);
+    const hE = base+Math.min(Math.PI*2-(dong>0?gap:0), maxAngle);
+    if (hE>hS) drawSeg(hS, hE, 'rgba(255,255,255,.42)', '#fff');
+  }
+
+  // 중앙 원
+  ctx.beginPath(); ctx.arc(cx,cy,r-2,0,Math.PI*2);
+  ctx.fillStyle='rgba(10,21,99,.55)'; ctx.fill();
+}
+
+// ── 3종 통합 애니메이션 ──
+function animateDbDonut(idx, canvas, numEl, dong, ha, col) {
+  if (_donutAnims[idx]) cancelAnimationFrame(_donutAnims[idx]);
+  const total = dong + ha;
+  const DURATION = 2200 + idx * 150;
+  const t0 = performance.now();
+
+  function frame(now) {
+    const rawT = Math.min((now-t0)/DURATION, 1);
+    const fillT  = easeOutCubic(rawT);          // 채워지기
+    const rotation = -(1-easeOutCubic(rawT)) * Math.PI*2; // 시계방향 회전 (0→-360→0)
+    const countT = easeOutElastic(Math.min(rawT*1.1,1)); // 카운트업 탄성
+
+    drawDbDonutFrame(canvas, dong, ha, col, fillT, rotation);
+    if (numEl) numEl.textContent = Math.round(countT * total);
+
+    if (rawT < 1) {
+      _donutAnims[idx] = requestAnimationFrame(frame);
+    } else {
+      drawDbDonutFrame(canvas, dong, ha, col, 1, 0);
+      if (numEl) numEl.textContent = total;
+      delete _donutAnims[idx];
+    }
+  }
+  _donutAnims[idx] = requestAnimationFrame(frame);
+}
+
+// ── 도넛 행 업데이트 ──
+function updateDbDonuts(todayKo) {
+  const row = document.getElementById('dbDonutRow');
+  if (!row) return;
+  const buses = Object.keys(DATA);
+
+  // todayKo를 row에 저장 (나중에 Observer가 꺼낼 수 있도록)
+  row.dataset.todayKo = todayKo;
+
+  row.innerHTML = buses.map((bus,i) => {
+    const col  = DB_DONUT_COLORS[i % DB_DONUT_COLORS.length];
+    const dong = (DATA[bus]?.등원||[]).filter(s=>s.days?.[todayKo]).length;
+    const ha   = (DATA[bus]?.하원||[]).filter(s=>s.days?.[todayKo]).length;
+    return `
+      ${i>0?'<div class="db-donut-sep"></div>':''}
+      <div class="db-donut-cell" onclick="selectBusDrill('${bus}','${todayKo}')">
+        <div class="db-donut-canvas-wrap">
+          <canvas id="dbd_${i}"></canvas>
+          <div class="db-donut-center"><div class="db-donut-num" id="dbn_${i}">0</div></div>
+        </div>
+        <div class="db-donut-bus">${bus}</div>
+        <div class="db-donut-sub">
+          <span style="background:${col.bg};color:${col.text}">↑${dong}</span>
+          <span style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.7)">↓${ha}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Observer로 100% 보일 때 애니메이션 실행
+  startDonutObserver(todayKo);
+}
+
+// IntersectionObserver - 도넛 행이 화면에 100% 보일 때 애니메이션
+let _donutObserver = null;
+function startDonutObserver(todayKo) {
+  // 기존 observer 해제
+  if (_donutObserver) { _donutObserver.disconnect(); _donutObserver = null; }
+
+  const row = document.getElementById('dbDonutRow');
+  if (!row) return;
+
+  _donutObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      // 100% 보일 때만 (threshold: 1.0)
+      if (entry.intersectionRatio >= 1.0) {
+        const ko = row.dataset.todayKo || todayKo;
+        const buses = Object.keys(DATA);
+        requestAnimationFrame(() => {
+          buses.forEach((bus, i) => {
+            const dong = (DATA[bus]?.등원||[]).filter(s=>s.days?.[ko]).length;
+            const ha   = (DATA[bus]?.하원||[]).filter(s=>s.days?.[ko]).length;
+            setTimeout(() => {
+              animateDbDonut(
+                i,
+                document.getElementById('dbd_'+i),
+                document.getElementById('dbn_'+i),
+                dong, ha,
+                DB_DONUT_COLORS[i % DB_DONUT_COLORS.length]
+              );
+            }, i * 60);
+          });
+        });
+      }
+    });
+  }, {
+    threshold: 1.0,   // 100% 보일 때
+    rootMargin: '0px'
+  });
+
+  _donutObserver.observe(row);
+}
+
+function updateBusGrid(todayKo, checks) {
+  const grid = document.getElementById('todayBusGrid');
+  if (!grid) return;
+  const buses = Object.keys(DATA);
+  grid.innerHTML = buses.map(bus => {
+    const dong = (DATA[bus]?.등원||[]).filter(s => s.days?.[todayKo]);
+    const ha   = (DATA[bus]?.하원||[]).filter(s => s.days?.[todayKo]);
+    if (dong.length + ha.length === 0) return '';
+    return buildFlipCard(bus, todayKo, checks);
+  }).join('');
+}
+
+function selectBusDrill(bus, day) {
+  // 탭을 명단으로 전환
+  const nameTab = document.querySelector('.tab-btn[data-tab="명단"]');
+  if (nameTab) switchTab('명단', nameTab);
+  // 사이드바 호차 선택
+  const navItems = document.querySelectorAll('[data-bus]');
+  navItems.forEach(el => {
+    if (el.dataset.bus === bus) { selectBus(bus, el); }
+  });
+  // 요일 필터 적용
+  if (['월','화','수','목','금'].includes(day)) {
+    activeDays.clear();
+    activeDays.add(day);
+    document.querySelectorAll('[data-day]').forEach(c => {
+      c.classList.toggle('active', c.dataset.day === day);
+    });
+  }
+  render();
+  setTimeout(() => {
+    const table = document.querySelector('.table-card');
+    if (table) table.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 150);
+}
+
+
+// ════════════════════════════════════════
+//  스플래시 애니메이션
+// ════════════════════════════════════════
+function initSplash() {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  setTimeout(() => {
+    splash.classList.add('hide');
+    setTimeout(() => {
+      splash.remove();
+      runHomeAnimation(); // 스플래시 제거 직후 홈 애니메이션 시작
+    }, 600);
+  }, 1400);
+}
+
+function runHomeAnimation() {
+  // 1. 대시보드/카드 순차 등장
+  const anims = document.querySelectorAll('.home-anim');
+  anims.forEach(el => {
+    requestAnimationFrame(() => el.classList.add('visible'));
+  });
+
+  // 2. 통계 카드 팝업
+  setTimeout(() => {
+    document.querySelectorAll('.stat-card').forEach(el => {
+      el.classList.add('visible');
+    });
+  }, 100);
+
+  // 3. 도넛 차트 애니메이션 (홈 등장 후)
+  setTimeout(() => {
+    const todayKo = document.getElementById('dbDonutRow')?.dataset?.todayKo;
+    if (todayKo) updateDbDonuts(todayKo);
+  }, 300);
+
+  // 4. statsRow 카드들 등장
+  setTimeout(() => {
+    document.querySelectorAll('#statsRow .stat-card').forEach((el, i) => {
+      setTimeout(() => el.classList.add('visible'), i * 70);
+    });
+  }, 200);
+}
+
+// ════════════════════════════════════════
+//  진동 피드백 (햅틱)
+// ════════════════════════════════════════
+function haptic(pattern) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(pattern || 30);
+  } catch(e) {}
+}
+
+// ════════════════════════════════════════
+//  복사 토스트
+// ════════════════════════════════════════
+let _copyToastTimer = null;
+function showCopyToast(msg) {
+  const el = document.getElementById('copyToast');
+  if (!el) return;
+  el.textContent = '📋 ' + (msg || '복사됨');
+  el.classList.add('show');
+  haptic([20, 30, 20]);
+  if (_copyToastTimer) clearTimeout(_copyToastTimer);
+  _copyToastTimer = setTimeout(() => { el.classList.remove('show'); }, 1800);
+}
+
+// ════════════════════════════════════════
+//  롱프레스 복사 (전화번호)
+// ════════════════════════════════════════
+function addLongPress(el, text, label) {
+  if (!el) return;
+  let timer = null;
+  const start = (e) => {
+    timer = setTimeout(() => {
+      haptic([10, 20, 30]);
+      navigator.clipboard.writeText(text)
+        .then(() => showCopyToast((label||text) + ' 복사됨'))
+        .catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = text; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); ta.remove();
+          showCopyToast((label||text) + ' 복사됨');
+        });
+    }, 600);
+  };
+  const end = () => { clearTimeout(timer); };
+  el.addEventListener('touchstart', start, {passive:true});
+  el.addEventListener('touchend', end);
+  el.addEventListener('touchmove', end);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', end);
+  el.addEventListener('mouseleave', end);
+}
+
+// ════════════════════════════════════════
+//  호차 카드 플립
+// ════════════════════════════════════════
+function buildFlipCard(bus, todayKo, checks) {
+  const dong = (DATA[bus]?.등원||[]).filter(s => s.days?.[todayKo]);
+  const ha   = (DATA[bus]?.하원||[]).filter(s => s.days?.[todayKo]);
+  const total = dong.length + ha.length;
+
+  const allRows = [
+    ...dong.map(s=>({...s, mode:'등원', bus})),
+    ...ha.map(s=>({...s, mode:'하원', bus}))
+  ];
+  const checked = allRows.filter(r => !!checks[`${r.bus}_${r.mode}_${r.phone||r.name}`]).length;
+  const pct = total > 0 ? Math.round(checked/total*100) : 0;
+
+  // 배지 색상
+  const idx = Object.keys(DATA).indexOf(bus);
+  const palette = ['#1428A0','#059669','#D97706','#DB2777','#7C3AED','#EA580C','#0891B2','#65A30D'];
+  const col = palette[idx % palette.length];
+
+  return `<div class="today-bus-card flip-wrap" onclick="flipCard(this)">
+    <div style="min-height:110px;position:relative">
+      <!-- 앞면 -->
+      <div class="card-front">
+        <div class="tbc-header">
+          <div class="tbc-name">${bus}</div>
+          <div class="tbc-badge" style="background:${col}22;color:${col};border:1px solid ${col}44">${total}명</div>
+        </div>
+        <div class="tbc-progress">
+          <div class="tbc-bar-track">
+            <div class="tbc-bar-fill" style="width:${pct}%;background:${col}"></div>
+          </div>
+          <div class="tbc-nums">
+            <span>체크 ${checked}/${total}</span>
+            <span>${pct}%</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <span style="font-size:11px;background:#e8f5e9;color:#059669;padding:2px 8px;border-radius:10px;font-weight:700">🔵 ${dong.length}</span>
+          <span style="font-size:11px;background:#ffeef0;color:#DC2626;padding:2px 8px;border-radius:10px;font-weight:700">🔴 ${ha.length}</span>
+        </div>
+      </div>
+      <!-- 뒷면 -->
+      <div class="card-back">
+        <div class="card-back-title">${bus}</div>
+        <div class="card-back-row">
+          <div class="card-back-stat">
+            <div class="card-back-num">${dong.length}</div>
+            <div class="card-back-label">🔵 등원</div>
+          </div>
+          <div style="width:1px;height:40px;background:rgba(255,255,255,.2)"></div>
+          <div class="card-back-stat">
+            <div class="card-back-num">${ha.length}</div>
+            <div class="card-back-label">🔴 하원</div>
+          </div>
+          <div style="width:1px;height:40px;background:rgba(255,255,255,.2)"></div>
+          <div class="card-back-stat">
+            <div class="card-back-num">${pct}%</div>
+            <div class="card-back-label">✅ 체크</div>
+          </div>
+        </div>
+        <div class="card-back-hint">다시 탭하면 돌아가요</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+let _flipTimers = {};
+function flipCard(el) {
+  haptic(40);
+  el.classList.toggle('flipped');
+  // 3초 후 자동 복귀
+  const key = el.dataset.bus || Math.random();
+  clearTimeout(_flipTimers[key]);
+  if (el.classList.contains('flipped')) {
+    _flipTimers[key] = setTimeout(() => {
+      el.classList.remove('flipped');
+    }, 3000);
+  }
+}
+
+
+
+// ════════════════════════════════════════
+//  Firebase Realtime DB 연동 (체크 동기화)
+// ════════════════════════════════════════
+const FB_URL = "https://shuttle-bus-cd8c2-default-rtdb.asia-southeast1.firebasedatabase.app";
+let _fbLastData = null;
+let _fbUpdating = false; // 무한루프 방지
+
+function fbTodayPath() {
+  return "/checks/" + todayKey() + ".json";
+}
+
+// Firebase에서 읽기
+async function fbRead() {
+  try {
+    const res = await fetch(FB_URL + fbTodayPath() + "?t=" + Date.now(), {cache:'no-store'});
+    if (!res.ok) return null;
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+// Firebase에 쓰기
+async function fbWrite(data) {
+  try {
+    await fetch(FB_URL + fbTodayPath(), {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data || {})
+    });
+  } catch(e) { console.warn('Firebase 쓰기 실패:', e); }
+}
+
+// 로컬 saveChecks 오버라이드 - Firebase에도 저장
+const _origSaveChecks = saveChecks;
+function saveChecks(c) {
+  _origSaveChecks(c);
+  if (!_fbUpdating) fbWrite(c);
+}
+
+// 폴링: 1.5초마다 Firebase 확인 → 변경 시 로컬 업데이트
+function fbStartListening() {
+  setInterval(async () => {
+    if (_fbUpdating) return;
+    const remote = await fbRead();
+    if (!remote) return;
+    const remoteStr = JSON.stringify(remote);
+    if (remoteStr === _fbLastData) return; // 변경 없음
+    _fbLastData = remoteStr;
+
+    // 로컬과 다르면 Firebase 데이터로 덮어씀
+    const local = getChecks();
+    const localStr = JSON.stringify(local);
+    if (remoteStr !== localStr) {
+      _fbUpdating = true;
+      const all = JSON.parse(localStorage.getItem(CHECK_KEY) || '{}');
+      all[todayKey()] = remote;
+      localStorage.setItem(CHECK_KEY, JSON.stringify(all));
+      _fbUpdating = false;
+      buildChecklist();
+      updateDashboard();
+    }
+  }, 1500);
+}
+
+// 앱 시작 시 Firebase 연결 + 초기 데이터 로드
+async function initFirebase() {
+  // Firebase에서 오늘 체크 데이터 먼저 읽기
+  const remote = await fbRead();
+  if (remote && typeof remote === 'object' && Object.keys(remote).length > 0) {
+    _fbLastData = JSON.stringify(remote);
+    // 로컬에 반영
+    const all = JSON.parse(localStorage.getItem(CHECK_KEY) || '{}');
+    all[todayKey()] = remote;
+    localStorage.setItem(CHECK_KEY, JSON.stringify(all));
+    buildChecklist();
+    updateDashboard();
+  } else {
+    // 로컬 데이터를 Firebase에 올리기
+    const local = getChecks();
+    if (Object.keys(local).length > 0) {
+      await fbWrite(local);
+      _fbLastData = JSON.stringify(local);
+    }
+  }
+  // 폴링 시작
+  fbStartListening();
+  console.log('✅ Firebase 연결됨');
+}
+
+
+function toast(msg,type=''){ 
+  const wrap=document.getElementById('toastWrap');
+  const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;
+  wrap.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+
+// 초기 실행
+updateStats();
+render();
+
+// 모바일에서 사이드바 완전히 숨김
+if (window.innerWidth <= 700) {
+  const sb = document.getElementById('mainSidebar');
+  if (sb) { sb.style.display = 'none'; sb.classList.remove('open'); }
+}
+
+// 탭 초기 설정
+document.querySelectorAll('.tab-pane').forEach(t => {
+  t.style.display = 'none';
+  t.classList.remove('active');
+});
+const initTab = document.getElementById('tab-명단');
+if (initTab) { initTab.style.display = 'block'; initTab.classList.add('active'); }
+
+buildDaySelector();
+buildChecklist();
+renderStats();
+renderLogs();
+rebuildSmsSelects();
+initSplash();
+initDashboard();
+initTouchEvents();
+setTimeout(initFirebase, 1000);
+setTimeout(initStatNavTouch, 200);
+applyPCLayout();
+
+
+</script>
+</body>
+</html>
