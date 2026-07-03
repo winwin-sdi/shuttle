@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>알림 팝업 테스트</title>
+<style>
+  body{font-family:-apple-system,sans-serif;padding:20px;background:#f4f6fb;color:#111}
+  h1{font-size:18px}
+  button{display:block;width:100%;padding:14px;margin:10px 0;font-size:16px;border:none;border-radius:10px;background:#1428A0;color:#fff}
+  button:disabled{background:#aaa}
+  #log{margin-top:20px;padding:12px;background:#000;color:#0f0;font-family:monospace;font-size:12px;white-space:pre-wrap;border-radius:8px;min-height:200px;word-break:break-all}
+</style>
+</head>
+<body>
+<h1>🔔 알림 팝업 단계별 테스트</h1>
+<p>버튼을 순서대로 눌러보세요. 각 단계 결과가 아래 로그창에 그대로 표시됩니다.</p>
+
+<button id="btn1" onclick="step1()">1. 서비스워커 등록</button>
+<button id="btn2" onclick="step2()">2. 알림 권한 요청</button>
+<button id="btn3" onclick="step3()">3. 알림 팝업 띄우기 (SW 방식)</button>
+<button id="btn4" onclick="step4()">4. 알림 팝업 띄우기 (구식 방식, 비교용)</button>
+
+<div id="log">대기 중...</div>
+
+<script>
+let swReg = null;
+const logEl = document.getElementById('log');
+function log(msg) {
+  logEl.textContent += '\n' + msg;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+log('페이지 로드됨. UA: ' + navigator.userAgent);
+log('serviceWorker 지원: ' + ('serviceWorker' in navigator));
+log('Notification 지원: ' + ('Notification' in window));
+if ('Notification' in window) log('현재 권한 상태: ' + Notification.permission);
+
+async function step1() {
+  log('--- 1단계: 서비스워커 등록 시도 ---');
+  if (!('serviceWorker' in navigator)) { log('실패: 이 브라우저는 서비스워커를 지원하지 않음'); return; }
+  try {
+    const reg = await navigator.serviceWorker.register('notify-test-sw.js');
+    log('register() 호출 성공. scope=' + reg.scope);
+    const readyReg = await navigator.serviceWorker.ready;
+    swReg = readyReg;
+    log('성공: 서비스워커 활성화 완료 (ready). active=' + (readyReg.active ? readyReg.active.state : '없음'));
+  } catch (e) {
+    log('실패: ' + e.name + ' - ' + e.message);
+  }
+}
+
+async function step2() {
+  log('--- 2단계: 알림 권한 요청 ---');
+  if (!('Notification' in window)) { log('실패: Notification API 없음'); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    log('결과: ' + perm);
+  } catch (e) {
+    log('실패: ' + e.name + ' - ' + e.message);
+  }
+}
+
+async function step3() {
+  log('--- 3단계: showNotification (서비스워커 방식) ---');
+  if (Notification.permission !== 'granted') { log('실패: 권한이 granted 상태가 아님 (현재: ' + Notification.permission + ')'); return; }
+  try {
+    let reg = swReg || await navigator.serviceWorker.ready;
+    await reg.showNotification('🚌 테스트 알림', { body: 'SW 방식으로 뜬 알림입니다', tag: 'test1' });
+    log('성공: showNotification() 호출 완료 (에러 없음). 화면 상단/알림창을 확인하세요.');
+  } catch (e) {
+    log('실패: ' + e.name + ' - ' + e.message);
+  }
+}
+
+function step4() {
+  log('--- 4단계: new Notification (구식 방식, 비교용) ---');
+  if (Notification.permission !== 'granted') { log('실패: 권한이 granted 상태가 아님'); return; }
+  try {
+    new Notification('🚌 테스트 알림(구식)', { body: 'new Notification() 방식입니다', tag: 'test2' });
+    log('성공: new Notification() 호출 완료 (에러 없음).');
+  } catch (e) {
+    log('실패: ' + e.name + ' - ' + e.message);
+  }
+}
+</script>
+</body>
+</html>
